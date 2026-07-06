@@ -1,0 +1,388 @@
+package utils
+
+import (
+	"slices"
+	"encoding/xml"
+	"fmt"
+	"os"
+	"strings"
+	"path/filepath"
+	"regexp"
+)
+
+
+func getJucerFilePath(ProjectPath string) (string, error) {
+	files, err := os.ReadDir(ProjectPath)
+	if err != nil {return "", fmt.Errorf("[Jucer2Cmake] Error while opening dir path %s: %w", ProjectPath, err)}
+
+	var jucerFiles []string
+
+	for _, file := range files {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".jucer") {
+			jucerFiles = append(jucerFiles, file.Name())
+		}
+	}
+
+	count := len(jucerFiles)
+	if count == 0 {return "", fmt.Errorf("[Jucer2Cmake] No .jucer file found in directory: %s", ProjectPath)}
+	if count > 1 {return "", fmt.Errorf("[Jucer2Cmake] Too many .jucer files (%d) found in directory: %s", count, ProjectPath)}
+
+	absPath, err := filepath.Abs(filepath.Join(ProjectPath, jucerFiles[0]))
+	if err != nil {return "", fmt.Errorf("[Jucer2Cmake] Error while calculating absolute path: %w", err)}
+
+	return absPath, nil
+}
+
+
+func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginProject, err error) {
+	var raw RawJucerProject
+
+	file, err := os.Open(jucerFilePath)
+	if err != nil {return nil, fmt.Errorf("[Jucer2Cmake] Error while opening file %s: %w", jucerFilePath, err)}
+
+	decoder := xml.NewDecoder(file)
+	if err := decoder.Decode(&raw); err != nil {return nil, fmt.Errorf("[Jucer2Cmake] Error while parsing XML: %w", err)}
+
+	proj = &PluginProject{}
+
+	// apply minimum required metadata
+	proj.Name = getString(raw.Name, "MOSAC")
+	proj.Version = getString(raw.Version, "1.0.0")
+	proj.CompanyName = getString(raw.CompanyName, "Laboratorio_di_Informatica_Musicale")
+	proj.PluginManufacturerCode = getString(raw.PluginManufacturerCode, "LIM!")
+	proj.PluginManufacturer = getString(raw.PluginManufacturer, "LIM")
+	proj.PluginCode = getString(raw.PluginCode, "Lim0")
+	proj.PluginDesc = getString(raw.PluginDesc, "<insert here plugin description>")
+	proj.PluginName = getString(raw.PluginName, proj.Name)
+	proj.CompanyEmail = getString(raw.CompanyEmail, "lim@di.unimi.it")
+	proj.CompanyWebsite = getString(raw.CompanyWebsite, "https://www.lim.di.unimi.it/")
+	proj.CompanyCopyright = getString(raw.CompanyCopyright, proj.CompanyEmail)
+
+	// formatting
+	proj.Name = strings.ReplaceAll(proj.Name, " ", "_")
+	proj.PluginName = strings.ReplaceAll(proj.PluginName, " ", "_")
+	proj.CompanyName = strings.ReplaceAll(proj.CompanyName, " ", "_")
+
+	// pluginFormats
+	if len(pluginFormats) > 0 {
+		proj.PluginFormats = pluginFormats
+	} else if raw.PluginFormats == nil {
+		proj.PluginFormats = []string{"Standalone", "VST3", "AU", "LV2", "Unity"}
+	} else {
+		formats := strings.Split(*raw.PluginFormats, ",")
+		formatMapping := map[string]string{
+			"buildVST3":       "VST3",
+			"buildAU":         "AU",
+			"buildAAX":        "AAX",
+			"buildStandalone": "Standalone",
+			"buildLV2":        "LV2",
+			"buildUnity":      "Unity",
+		}
+		for _, f := range formats {
+			if mapped, ok := formatMapping[f]; ok {
+				proj.PluginFormats = append(proj.PluginFormats, mapped)
+			}
+		}
+	}
+
+	// plugin characteristics
+	charStr := getString(raw.PluginCharacteristicsValue, "")
+	characteristics := strings.Split(charStr, ",")
+
+	checkChar := func(key string) string {
+		if slices.Contains(characteristics, key) {
+			return "TRUE"
+		}
+		return "FALSE"
+	}
+
+	proj.AAXDisableBypass = checkChar("pluginAAXDisableBypass")
+	proj.AAXDisableMultiMono = checkChar("pluginAAXDisableMultiMono")
+	proj.EditorRequiresKeys = checkChar("pluginEditorRequiresKeys")
+	proj.IsMidiEffect = checkChar("pluginIsMidiEffectPlugin")
+	proj.IsSynth = checkChar("pluginIsSynth")
+	proj.WantsMidiInput = checkChar("pluginWantsMidiIn")
+	proj.ProducesMidiOut = checkChar("pluginProducesMidiOut")
+
+	// defaults
+	proj.BinaryDataNamespace = getString(raw.BinaryDataNamespace, "BinaryData")
+	proj.IncludeBinaryInJuceHeader = getInt(raw.IncludeBinaryInJuceHeader, 1)
+	proj.AddUsingNamespace = getString(raw.AddUsingNamespace, "0")
+
+	// VST3 category
+	vst3Str := getString(raw.PluginVST3Category, "Fx")
+	vst3Cats := strings.Split(vst3Str, ",")
+	proj.PluginVST3Category = "\"" + strings.Join(vst3Cats, "\" \"") + "\""
+
+	// AAX category
+	aaxCategoriesRaw := strings.Split(getString(raw.PluginAAXCategory, "0"), ",")
+	var parsedAax []string
+	for _, c := range aaxCategoriesRaw {
+		switch c {
+		case "0": parsedAax = append(parsedAax, "None")
+		case "1": parsedAax = append(parsedAax, "EQ")
+		case "2": parsedAax = append(parsedAax, "Dynamics")
+		case "4": parsedAax = append(parsedAax, "PitchShift")
+		case "8": parsedAax = append(parsedAax, "Reverb")
+		case "16": parsedAax = append(parsedAax, "Delay")
+		case "32": parsedAax = append(parsedAax, "Modulation")
+		case "64": parsedAax = append(parsedAax, "Harmonic")
+		case "128": parsedAax = append(parsedAax, "NoiseReduction")
+		case "256": parsedAax = append(parsedAax, "Dither")
+		case "512": parsedAax = append(parsedAax, "SoundField")
+		case "1024": parsedAax = append(parsedAax, "HWGenerators")
+		case "2048": parsedAax = append(parsedAax, "SWGenerators")
+		case "4096": parsedAax = append(parsedAax, "WrappedPlugin")
+		case "8192": parsedAax = append(parsedAax, "Effect")
+		case "65536": parsedAax = append(parsedAax, "MIDIEffect")
+		}
+	}
+	proj.PluginAAXCategory = strings.Join(parsedAax, "|")
+
+	// AU main type
+	auTypeStr := getString(raw.PluginAUMainType, "'aufx'")
+	switch auTypeStr {
+	case "'aufx'": proj.PluginAUMainType = "kAudioUnitType_Effect"
+	case "'aufc'": proj.PluginAUMainType = "kAudioUnitType_FormatConverter"
+	case "'augn'": proj.PluginAUMainType = "kAudioUnitType_Generator"
+	case "'aumi'": proj.PluginAUMainType = "kAudioUnitType_MIDIProcessor"
+	case "'aumx'": proj.PluginAUMainType = "kAudioUnitType_Mixer"
+	case "'aumu'": proj.PluginAUMainType = "kAudioUnitType_MusicDevice"
+	case "'aumf'": proj.PluginAUMainType = "kAudioUnitType_MusicEffect"
+	case "'auou'": proj.PluginAUMainType = "kAudioUnitType_Output"
+	case "'aupn'": proj.PluginAUMainType = "kAudioUnitType_Panner"
+	default: proj.PluginAUMainType = "'aufx'"
+	}
+
+	// defines
+	definesStr := getString(raw.Defines, "")
+	if definesStr != "" {
+		rawDefines := strings.Fields(definesStr)
+		for _, d := range rawDefines {
+			if d != "=" && d != "1" {
+				cleanedStr := strings.ReplaceAll(d, "=1", "")
+				proj.Defines = append(proj.Defines, cleanedStr)
+			}
+		}
+	}
+
+	// modules
+	for _, mod := range raw.Modules {
+		if mod.ID != "" {
+			proj.Modules = append(proj.Modules, "juce::"+mod.ID)
+		}
+	}
+
+	// header directories
+	if raw.HeaderPath != nil && *raw.HeaderPath != "" {
+		re := regexp.MustCompile(`^(\.\.?/)+`)
+		
+		lines := strings.Split(*raw.HeaderPath, "\n")
+		for _, line := range lines {
+			p := strings.TrimSpace(line)
+			if p != "" {
+				p = strings.ReplaceAll(p, "\\", "/")
+				p = re.ReplaceAllString(p, "")
+				proj.HeaderDirs = append(proj.HeaderDirs, p)
+			}
+		}
+	}
+
+	// source and asset files
+	var walkGroup func(g RawGroup)
+	walkGroup = func(g RawGroup) {
+		for _, f := range g.Files {
+			if f.File != "" {
+				if strings.HasSuffix(f.File, ".cpp") || strings.HasSuffix(f.File, ".c") { // source
+					proj.SourceFiles = append(proj.SourceFiles, f.File)
+				}
+				if f.Resource == "1" { // asset
+					proj.AssetFiles = append(proj.AssetFiles, f.File)
+				}
+			}
+		}
+		for _, childGroup := range g.Groups {
+			walkGroup(childGroup)
+		}
+	}
+	walkGroup(raw.MainGroup)
+
+	return proj, nil
+}
+
+
+func generateCMakeLists(proj *PluginProject, cmakeOutputPath string) error {
+	cmakeOutDir := filepath.Dir(cmakeOutputPath)
+	if err := os.MkdirAll(cmakeOutDir, 0755); err != nil {return fmt.Errorf("[Jucer2Cmake] Error creating output directory: %w", err)}
+
+	file, err := os.Create(cmakeOutputPath)
+	if err != nil {return fmt.Errorf("[Jucer2Cmake] Error creating CMakeLists.txt: %w", err)}
+	defer file.Close()
+
+	var b strings.Builder
+
+	b.WriteString("cmake_minimum_required(VERSION 3.22)\n\n")
+	b.WriteString(fmt.Sprintf("project(%s VERSION %s)\n", proj.Name, proj.Version))
+
+	osName := `
+function(get_os_name OUTPUT_VARIABLE)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(${OUTPUT_VARIABLE} "MacOS" PARENT_SCOPE)
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(${OUTPUT_VARIABLE} "Linux" PARENT_SCOPE)
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(${OUTPUT_VARIABLE} "Windows" PARENT_SCOPE)
+  else()
+    set(${OUTPUT_VARIABLE} "null" PARENT_SCOPE)
+  endif()
+endfunction()
+`
+	b.WriteString(osName);b.WriteString("\n")
+	b.WriteString("get_os_name(CURRENT_OS)\n")
+	b.WriteString("add_subdirectory(\"${JUCE_PATH}\" \"${PROJECT_DIR}/build/${CURRENT_OS}/JUCE_build\")\n\n")
+
+	// juce_add_plugin
+	b.WriteString(fmt.Sprintf("juce_add_plugin(%s\n", proj.PluginName))
+	b.WriteString(fmt.Sprintf("\tVERSION %s\n", proj.Version))
+	b.WriteString(fmt.Sprintf("\tCOMPANY_NAME %s\n", proj.CompanyName))
+
+	// Metadati opzionali
+	if proj.CompanyEmail != "" {b.WriteString(fmt.Sprintf("\tCOMPANY_EMAIL \"%s\"\n", proj.CompanyEmail))}
+	if proj.CompanyWebsite != "" {b.WriteString(fmt.Sprintf("\tCOMPANY_WEBSITE \"%s\"\n", proj.CompanyWebsite))}
+	if proj.CompanyCopyright != "" {b.WriteString(fmt.Sprintf("\tCOMPANY_COPYRIGHT \"%s\"\n", proj.CompanyCopyright))}
+	if proj.PluginDesc != "" {b.WriteString(fmt.Sprintf("\tDESCRIPTION \"%s\"\n", proj.PluginDesc))}
+
+	b.WriteString(fmt.Sprintf("\tPLUGIN_MANUFACTURER_CODE %s\n", proj.PluginManufacturerCode))
+	b.WriteString(fmt.Sprintf("\tPLUGIN_CODE %s\n", proj.PluginCode))
+	b.WriteString(fmt.Sprintf("\tPLUGIN_NAME %s\n", proj.PluginName))
+	b.WriteString(fmt.Sprintf("\tFORMATS %s\n", strings.Join(proj.PluginFormats, " ")))
+	b.WriteString(fmt.Sprintf("\tIS_SYNTH %s\n", proj.IsSynth))
+	b.WriteString(fmt.Sprintf("\tNEEDS_MIDI_INPUT %s\n", proj.WantsMidiInput))
+	b.WriteString(fmt.Sprintf("\tNEEDS_MIDI_OUTPUT %s\n", proj.ProducesMidiOut))
+	b.WriteString(fmt.Sprintf("\tIS_MIDI_EFFECT %s\n", proj.IsMidiEffect))
+	b.WriteString(fmt.Sprintf("\tEDITOR_WANTS_KEYBOARD_FOCUS %s\n", proj.EditorRequiresKeys))
+	b.WriteString(fmt.Sprintf("\tPRODUCT_NAME \"%s\"\n", proj.PluginName))
+	b.WriteString("\tCOPY_PLUGIN_AFTER_BUILD FALSE")
+
+	// LV2, VST3, AAX, AU
+	if slices.Contains(proj.PluginFormats, "LV2") {b.WriteString(fmt.Sprintf("\n\tLV2URI \"https://www.lim.di.unimi.it/%s\"", proj.PluginName))}
+	if slices.Contains(proj.PluginFormats, "VST3") {b.WriteString(fmt.Sprintf("\n\tVST3_CATEGORIES %s\n\tVST3_AUTO_MANIFEST FALSE", proj.PluginVST3Category))}
+	if slices.Contains(proj.PluginFormats, "AAX") {b.WriteString(fmt.Sprintf("\n\tAAX_CATEGORY %s", proj.PluginAAXCategory))}
+	if slices.Contains(proj.PluginFormats, "AU") {b.WriteString(fmt.Sprintf("\n\tAU_MAIN_TYPE %s", proj.PluginAUMainType))}
+	b.WriteString(")\n\n")
+
+	b.WriteString(fmt.Sprintf("juce_generate_juce_header(%s)\n\n", proj.PluginName))
+
+	// cross-compilation manifest for Windows
+	manifestStr := `if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  set(STANDALONE_TARGET "--PLUGINNAME--_Standalone")
+  set(VST3_TARGET "--PLUGINNAME--_VST3")
+      
+  set(MANIFEST_PATH "${CMAKE_CURRENT_BINARY_DIR}/WinManifest.xml")
+  file(WRITE "${MANIFEST_PATH}" [=[<?xml version="1.0" encoding="UTF-8"?>
+  <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+    <trustInfo>
+      <security>
+        <requestedPrivileges>
+          <requestedExecutionLevel level="asInvoker" uiAccess="false"/>
+        </requestedPrivileges>
+      </security>
+    </trustInfo>
+    <dependency>
+      <dependentAssembly>
+        <assemblyIdentity type="Win32" name="Microsoft.Windows.Common-Controls" version="6.0.0.0" processorArchitecture="*" publicKeyToken="6595b64144ccf1df" language="*"/>
+      </dependentAssembly>
+    </dependency>
+  </assembly>]=])
+
+  if (TARGET ${STANDALONE_TARGET})
+    set(RC_PATH_EXE "${CMAKE_CURRENT_BINARY_DIR}/WinResource_EXE.rc")
+    file(WRITE "${RC_PATH_EXE}" "1 24 \"${MANIFEST_PATH}\"\n")
+    target_sources(${STANDALONE_TARGET} PRIVATE "${RC_PATH_EXE}")
+  endif()
+
+  if (TARGET ${VST3_TARGET})
+    set(RC_PATH_DLL "${CMAKE_CURRENT_BINARY_DIR}/WinResource_DLL.rc")
+    file(WRITE "${RC_PATH_DLL}" "2 24 \"${MANIFEST_PATH}\"\n")
+    target_sources(${VST3_TARGET} PRIVATE "${RC_PATH_DLL}")
+  endif()
+endif()
+
+`
+	b.WriteString(strings.ReplaceAll(manifestStr, "--PLUGINNAME--", proj.PluginName))
+
+	// header directories
+	if len(proj.HeaderDirs) > 0 {
+		b.WriteString(fmt.Sprintf("target_include_directories(%s PRIVATE\n", proj.PluginName))
+		for _, src := range proj.HeaderDirs {
+			b.WriteString(fmt.Sprintf("\t\"%s\"\n", src))
+		}
+		b.WriteString(")\n\n")
+	}
+
+	// source files
+	if len(proj.SourceFiles) > 0 {
+		b.WriteString(fmt.Sprintf("target_sources(%s PRIVATE\n", proj.PluginName))
+		for _, src := range proj.SourceFiles {
+			b.WriteString(fmt.Sprintf("\t\"%s\"\n", src))
+		}
+		b.WriteString(")\n\n")
+	}
+
+	// compile definitions
+	b.WriteString(fmt.Sprintf("target_compile_definitions(%s\n\tPUBLIC\n", proj.PluginName))
+	for _, define := range proj.Defines {
+		b.WriteString(fmt.Sprintf("\t\t%s=1\n", define))
+	}
+	b.WriteString("\t\tJUCE_WEB_BROWSER=0\n\t\tJUCE_USE_CURL=0\n\t\tJUCE_VST3_CAN_REPLACE_VST2=0)\n\n")
+
+	// assets files (binary data)
+	hasBinaryData := proj.IncludeBinaryInJuceHeader == 1 && len(proj.AssetFiles) > 0
+	if hasBinaryData {
+		b.WriteString(fmt.Sprintf("juce_add_binary_data(%s SOURCES\n", proj.BinaryDataNamespace))
+		for _, asset := range proj.AssetFiles {
+			b.WriteString(fmt.Sprintf("\t\"%s\"\n", asset))
+		}
+		b.WriteString(")\n\n")
+	}
+
+	// modules and binary data linking
+	b.WriteString(fmt.Sprintf("target_link_libraries(%s\n", proj.PluginName))
+	if len(proj.Modules) > 0 || hasBinaryData {
+		b.WriteString("\tPRIVATE\n")
+		if len(proj.Modules) > 0 {
+			b.WriteString(fmt.Sprintf("\t\t%s\n", strings.Join(proj.Modules, "\n\t\t")))
+		}
+		if hasBinaryData {
+			b.WriteString(fmt.Sprintf("\t\t%s\n", proj.BinaryDataNamespace))
+		}
+	}
+	b.WriteString("\tPUBLIC\n\t\tjuce::juce_recommended_config_flags\n\t\tjuce::juce_recommended_lto_flags\n\t\tjuce::juce_recommended_warning_flags)\n\n")
+
+	// compile options (suppress warnings)
+	b.WriteString(fmt.Sprintf("target_compile_options(%s PRIVATE\n", proj.PluginName))
+	b.WriteString("\t$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:-w>\n")
+	b.WriteString("\t$<$<CXX_COMPILER_ID:MSVC>:/W0>)\n")
+
+
+	_, err = file.WriteString(b.String())
+	return err
+}
+
+
+// Creates a CMakeLists.txt file from a JUCE .jucer (Basic Audio Plugin) project file.
+// It takes the path to the project directory and a list of plugin formats to include in the CMakeLists.txt file (it overrides the formats specified in the .jucer file if provided).
+// Returns a pointer to the parsed PluginProject struct and an error if any.
+func Jucer2Cmake(ProjectPath string, PluginFormats []string) (*PluginProject, error) {
+	filePath, err := getJucerFilePath(ProjectPath)
+	if err != nil {return nil, err}
+
+	proj, err := parseJucerFile(filePath, PluginFormats)
+	if err != nil {return nil, err}
+
+	cmakeOutputPath := filepath.Join(ProjectPath, "CMakeLists.txt")
+	err = generateCMakeLists(proj, cmakeOutputPath)
+	if err != nil {return nil, err}
+
+	return proj, nil
+}

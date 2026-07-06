@@ -16,6 +16,11 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 	for _, os := range buildForOS {
 		switch os {
 		case "MacOS":
+			builder, err := NewMacOSBuilder(juceDir, projDir, buildType)
+			if err != nil {return nil, err}
+
+			err = builder.Build()
+			if err != nil {return nil, err}
 		case "Linux":
 			builder, err := NewLinuxBuilder(juceDir, projDir, buildType)
 			if err != nil {return nil, err}

@@ -7,6 +7,7 @@ import (
 	"mosac/builders"
 	"mosac/utils"
 	"strings"
+	"path/filepath"
 )
 
 
@@ -77,10 +78,19 @@ func main() {
 	if len(pluginFormats) == 0 {fmt.Println("[MOSAC] Please specify at least one plugin format.");return}
 	if !ContainsValidArg(pluginFormats, validFormats) {fmt.Println("[MOSAC] Please specify at least one valid plugin format (Standalone, LV2, VST3, AU, Unity, or AAX).");return}
 	
+	// make every path absolute
+	var err error
+	projDir, err = filepath.Abs(projDir)
+	if err != nil {fmt.Printf("[MOSAC] Error occurred while resolving project directory path: %v\n", err); return}
+	juceDir, err = filepath.Abs(juceDir)
+	if err != nil {fmt.Printf("[MOSAC] Error occurred while resolving JUCE directory path: %v\n", err); return}
+	outputDir, err = filepath.Abs(outputDir)
+	if err != nil {fmt.Printf("[MOSAC] Error occurred while resolving output directory path: %v\n", err); return}
+
 	// ===== START =====
 	fmt.Println("===== MOSAC =====")
 
-	_, err := builders.BuildPlugin(projDir, juceDir, outputDir, buildType, buildForOS, pluginFormats)
+	_, err = builders.BuildPlugin(projDir, juceDir, outputDir, buildType, buildForOS, pluginFormats)
 	if err != nil {fmt.Printf("[MOSAC] Error occurred while building plugin: %v\n", err)}
 
 }

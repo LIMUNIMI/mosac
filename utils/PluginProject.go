@@ -68,8 +68,8 @@ type PluginProject struct {
 	BinaryDataNamespace       string
 	IncludeBinaryInJuceHeader int
 	AddUsingNamespace         string
-	PluginVST3Category        string
-	PluginAAXCategory         string
+	PluginVST3Category        []string
+	PluginAAXCategory         []string
 	PluginAUMainType          string
 	Defines                   []string
 	CompanyEmail              string

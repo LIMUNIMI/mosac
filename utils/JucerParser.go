@@ -52,7 +52,7 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 	proj.PluginManufacturerCode = getString(raw.PluginManufacturerCode, "LIM!")
 	proj.PluginManufacturer = getString(raw.PluginManufacturer, "LIM")
 	proj.PluginCode = getString(raw.PluginCode, "Lim0")
-	proj.PluginDesc = getString(raw.PluginDesc, "<insert here plugin description>")
+	proj.PluginDesc = getString(raw.PluginDesc, "insert here italian plugin description")
 	proj.PluginName = getString(raw.PluginName, proj.Name)
 	proj.CompanyEmail = getString(raw.CompanyEmail, "lim@di.unimi.it")
 	proj.CompanyWebsite = getString(raw.CompanyWebsite, "https://www.lim.di.unimi.it/")
@@ -111,8 +111,7 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 
 	// VST3 category
 	vst3Str := getString(raw.PluginVST3Category, "Fx")
-	vst3Cats := strings.Split(vst3Str, ",")
-	proj.PluginVST3Category = "\"" + strings.Join(vst3Cats, "\" \"") + "\""
+	proj.PluginVST3Category = strings.Split(vst3Str, ",")
 
 	// AAX category
 	aaxCategoriesRaw := strings.Split(getString(raw.PluginAAXCategory, "0"), ",")
@@ -137,7 +136,7 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 		case "65536": parsedAax = append(parsedAax, "MIDIEffect")
 		}
 	}
-	proj.PluginAAXCategory = strings.Join(parsedAax, "|")
+	proj.PluginAAXCategory = parsedAax
 
 	// AU main type
 	auTypeStr := getString(raw.PluginAUMainType, "'aufx'")
@@ -266,8 +265,8 @@ endfunction()
 
 	// LV2, VST3, AAX, AU
 	if slices.Contains(proj.PluginFormats, "LV2") {b.WriteString(fmt.Sprintf("\n\tLV2URI \"https://www.lim.di.unimi.it/%s\"", proj.PluginName))}
-	if slices.Contains(proj.PluginFormats, "VST3") {b.WriteString(fmt.Sprintf("\n\tVST3_CATEGORIES %s\n\tVST3_AUTO_MANIFEST FALSE", proj.PluginVST3Category))}
-	if slices.Contains(proj.PluginFormats, "AAX") {b.WriteString(fmt.Sprintf("\n\tAAX_CATEGORY %s", proj.PluginAAXCategory))}
+	if slices.Contains(proj.PluginFormats, "VST3") {b.WriteString(fmt.Sprintf("\n\tVST3_CATEGORIES \"%s\"\n\tVST3_AUTO_MANIFEST FALSE", strings.Join(proj.PluginVST3Category, "\" \"")))}
+	if slices.Contains(proj.PluginFormats, "AAX") {b.WriteString(fmt.Sprintf("\n\tAAX_CATEGORY %s", strings.Join(proj.PluginAAXCategory, "|")))}
 	if slices.Contains(proj.PluginFormats, "AU") {b.WriteString(fmt.Sprintf("\n\tAU_MAIN_TYPE %s", proj.PluginAUMainType))}
 	b.WriteString(")\n\n")
 

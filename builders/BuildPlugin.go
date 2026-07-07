@@ -5,7 +5,7 @@ import (
 	"mosac/utils"
 )
 
-func BuildPlugin(projDir string, juceDir string, outputDir string, buildType string, buildForOS []string, pluginFormats []string) (*utils.PluginProject, error) {
+func BuildPlugin(projDir string, juceDir string, outputDir string, buildType string, buildForOS, pluginFormats []string) (*utils.PluginProject, error) {
 	fmt.Printf("Building project at: %s\nSelected JUCE directory: %s\nOutput directory: %s\nBuild type: %s\nTarget OS: %v\nPlugin formats: %v\n\n--- START ---\n", projDir, juceDir, outputDir, buildType, buildForOS, pluginFormats)
 	
 	// create CMakeLists.txt from Jucer file
@@ -40,5 +40,9 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 		}
 	}
 
+	err = utils.OrganizeOutput(project, projDir, outputDir, buildType, buildForOS, pluginFormats)
+	if err != nil {return nil, err}
+
+	fmt.Println("--- END ---")
 	return project, nil
 }

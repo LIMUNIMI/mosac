@@ -17,6 +17,7 @@ type PluginMetadata struct {
 	DemoImageLink   string   `json:"demoImageLink"`
 	Authors         string   `json:"authors"`
 	Email           string   `json:"email"`
+	TargetOS        []string `json:"targetOS"`
 	CompiledFormats []string `json:"compiledFormats"`
 	FxCategory      []string `json:"FxCategory"`
 }
@@ -46,16 +47,15 @@ func copyDirectory(src, dst string) error {
 
 
 
-func removeFiles(toBeRemoved []string) error {
+func removeFiles(toBeRemoved []string) {
 	for _, file := range toBeRemoved {
-		if err := os.Remove(file); err != nil {return fmt.Errorf("error removing file %s: %w", file, err)}
+		os.Remove(file)
 	}
-	return nil
 }
 
 
 
-func writeInfoToJson(proj *PluginProject, outputDir string, pluginFormats []string) error {
+func writeInfoToJson(proj *PluginProject, outputDir string, buildForOS, pluginFormats []string) error {
 	file, err := os.Create(filepath.Join(outputDir, fmt.Sprintf("%s.json", proj.PluginName)))
 	if err != nil {return fmt.Errorf("[Output] Error creating JSON file: %w", err)}
 	defer file.Close()
@@ -68,6 +68,7 @@ func writeInfoToJson(proj *PluginProject, outputDir string, pluginFormats []stri
 		DemoImageLink:   "insert demo image link here",
 		Authors:         "insert authors here",
 		Email:           "insert email here",
+		TargetOS:        buildForOS,
 		CompiledFormats: pluginFormats,
 		FxCategory:      proj.PluginVST3Category,
 	}
@@ -108,10 +109,9 @@ func OrganizeOutput(proj *PluginProject, projDir, outputDir, buildType string, b
 		filepath.Join(contentDir, "Windows", buildType,"VST3", fmt.Sprintf("%s.lib", proj.PluginName)),
 	)
 
-	err = removeFiles(toBeRemoved)
-	if err != nil {return fmt.Errorf("[Output] Error occurred while removing useless files: %w", err)}
+	removeFiles(toBeRemoved)
 
-	if err := writeInfoToJson(proj, outputDir, pluginFormats); err != nil {return err}
+	if err := writeInfoToJson(proj, outputDir, buildForOS, pluginFormats); err != nil {return err}
 
 	return nil
 }

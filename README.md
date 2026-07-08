@@ -16,6 +16,34 @@ MOSAC works on **CLI**. The execution requires specific parameters as detailed i
 
 *Tip*: before ever running MOSAC for its purpose, make sure to run it first with the `-img` flag in order to prepare all the Docker images needed.
 
+### Batch (multiple builds)
+**Batch mode** is activated via the `-batch` parameter, followed by the path to a **CSV file** containing the comprehensive list of project paths to be compiled, the desired JUCE path (specified for compatibility), their respective build configurations, the targeted operating systems and plugins format.
+It's recommended to specify also the `-OP` (*outputPath*) parameter.
+
+##### Batch configuration file:
+
+| project_path            | juce_path    |  build_configuration | OS                  | plugin_formats  |
+| ----------------------- | ------------ | -------------------- | ------------------- | --------------- |
+| /home/user/TEST/plugin1 | path/to/JUCE | Release              | Linux;MacOS;Windows | Standalone;VST3 |
+| /home/user/TEST/plugin2 | path/to/JUCE | Debug                | Linux;Windows       | AU;VST3         |
+| /home/user/TEST/plugin3 | path/to/JUCE | Release              | Linux               | Standalone      |
+
+``` csv
+-------------------
+| file: batch.csv |
+-------------------
+#
+# project_path = Path to the project to compile
+# juce_path = Path to the JUCE directory
+# build_configuration = 'Debug' or 'Release'
+# OS = OSs to target for compiling. They must be separated by ';'.
+# plugin_formats = List of plugin formats to compile. They must be separated by ';'.
+#
+/home/PLUGINS/plugin1,/path/to/JUCE/,Release,Linux;MacOS;Windows,Standalone;VST3
+/home/PLUGINS/plugin2,/path/to/JUCE/,Debug,Linux,AU;VST3
+/home/PLUGINS/plugin3,/path/to/JUCE/,Release,MacOS,Standalone
+```
+
 ## Installation & first run
 1) Download [Golang](https://go.dev/doc/install) v1.26.4 and [Docker](https://docs.docker.com/desktop/setup/install/mac-install/).
 2) Clone the JUCE framework directory:
@@ -86,6 +114,7 @@ outputDir
 └── plugin2.json
 ```
 
-### Warnings
-- **AAX** formats is not well supported for Windows due to cross-compilation. Additionalliy on MacOS it can only be used in Pro Tools Developer, if you want to use it in regular Pro Tools you must send a "plugin-signing" email to Avid.
+### Notes
 - Please note that all the artefacts compiled by this script are **not signed**.
+- **AAX** formats is not well supported for Windows due to cross-compilation. Additionalliy on MacOS it can only be used in Pro Tools Developer, if you want to use it in regular Pro Tools you must send a "plugin-signing" email to Avid.
+- Please ensure that all file names and `#include` paths strictly follow **case-sensitive** naming conventions. While Windows is case-insensitive, the Linux environment is not. Correct casing is essential to avoid compilation errors during cross-platform builds.

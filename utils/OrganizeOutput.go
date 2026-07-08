@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"slices"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -60,6 +61,8 @@ func writeInfoToJson(proj *PluginProject, outputDir string, buildForOS, pluginFo
 	if err != nil {return fmt.Errorf("[Output] Error creating JSON file: %w", err)}
 	defer file.Close()
 
+	
+
 	jsonData := PluginMetadata{
 		PluginName:      strings.ReplaceAll(proj.PluginName, "_", " "),
 		PluginDesc:      proj.PluginDesc,
@@ -92,10 +95,19 @@ func OrganizeOutput(proj *PluginProject, projDir, outputDir, buildType string, b
 		toBeRemoved []string
 	)
 
+	filteredFormats := make([]string, 0, len(pluginFormats))
+	if !slices.Contains(buildForOS, "MacOS") && slices.Contains(pluginFormats, "AU") {
+		for _, f := range pluginFormats {
+			if f != "AU" {filteredFormats = append(filteredFormats, f)}
+		}
+	} else {
+		filteredFormats = pluginFormats
+	}
+
 	if err = os.MkdirAll(contentDir, os.ModePerm); err != nil {return fmt.Errorf("[Output] Error occurred while creating output directory: %w", err)}
 
 	for _, os := range buildForOS {
-		for _, format := range pluginFormats {
+		for _, format := range filteredFormats {
 			srcDir := filepath.Join(projDir, "build", os, buildType, proj.PluginName + "_artefacts", buildType, format)
 			dstDir := filepath.Join(contentDir, os, buildType, format)
 
@@ -111,7 +123,7 @@ func OrganizeOutput(proj *PluginProject, projDir, outputDir, buildType string, b
 
 	removeFiles(toBeRemoved)
 
-	if err := writeInfoToJson(proj, outputDir, buildForOS, pluginFormats); err != nil {return err}
+	if err := writeInfoToJson(proj, outputDir, buildForOS, filteredFormats); err != nil {return err}
 
 	return nil
 }

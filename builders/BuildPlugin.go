@@ -132,9 +132,12 @@ func BuildBatch(batchPath, outputDir string, showWarnings bool) error {
 	file, err := os.Open(batchPath)
 	if err != nil {return fmt.Errorf("[BuildBatch] Error occurred while opening batch file: %w", err)}
 	defer file.Close()
-
+	
+	var n int
+	n=0
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
+		
 		line := scanner.Text()
 		args := strings.Split(line, ",")
 		if len(args) != 5 {return fmt.Errorf("[BuildBatch] Invalid batch file format. See -h or --help for more information.")}
@@ -149,7 +152,8 @@ func BuildBatch(batchPath, outputDir string, showWarnings bool) error {
 		if len(pluginFormats) == 0 {pluginFormats = append(pluginFormats, "Standalone", "LV2", "VST3", "AU", "Unity")}
 
 		err = BuildPlugin(projectPath, jucePath, outputDir, buildType, buildForOS, pluginFormats, showWarnings)
-		if err != nil {buildErrors = append(buildErrors, fmt.Errorf("[BuildBatch] Error occurred while building plugin for line '%s': %w", line, err))}
+		if err != nil {buildErrors = append(buildErrors, fmt.Errorf("[Plugin %d] Error occurred while building %s:\n\t%w", n+1, projectPath[strings.LastIndex(projectPath, "/")+1:], err))}
+		n++
 	}
 
 	if err := scanner.Err(); err != nil {return fmt.Errorf("[BuildBatch] Error occurred while reading batch file: %w", err)}

@@ -2,9 +2,11 @@ package builders
 
 import (
 	"fmt"
-	"strings"
-	"path/filepath"
 	"mosac/utils"
+	"os"
+	"path/filepath"
+	"strings"
+	"bufio"
 )
 
 
@@ -103,8 +105,43 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 }
 
 
+// projectPath,jucePath,buildType,buildForOS,pluginFormats
+func BuildBatch(batchPath, outputDir string) error {
+	var buildErrors []error
+	file, err := os.Open(batchPath)
+	if err != nil {return fmt.Errorf("[BuildBatch] Error occurred while opening batch file: %w", err)}
+	defer file.Close()
 
-func ProcessBatchFile(batchPath string) error {
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		args := strings.Split(line, ",")
+		if len(args) != 5 {return fmt.Errorf("[BuildBatch] Invalid batch file format. See -h or --help for more information.")}
+
+		projectPath := strings.TrimSpace(args[0])
+		jucePath := strings.TrimSpace(args[1])
+		buildType := strings.TrimSpace(args[2])
+		buildForOS := strings.Split(strings.TrimSpace(args[3]), ";")
+		pluginFormats := strings.Split(strings.TrimSpace(args[4]), ";")
+
+		if len(buildForOS) == 0 {buildForOS = append(buildForOS, "MacOS", "Linux", "Windows")}
+		if len(pluginFormats) == 0 {pluginFormats = append(pluginFormats, "Standalone", "LV2", "VST3", "AU", "Unity")}
+
+		err = BuildPlugin(projectPath, jucePath, outputDir, buildType, buildForOS, pluginFormats)
+		if err != nil {buildErrors = append(buildErrors, fmt.Errorf("[BuildBatch] Error occurred while building plugin for line '%s': %w", line, err))}
+	}
+
+	if err := scanner.Err(); err != nil {return fmt.Errorf("[BuildBatch] Error occurred while reading batch file: %w", err)}
+
+	fmt.Println("===== Finished Batch-Mode =====")
+
+	if len(buildErrors) > 0 {
+		fmt.Println("[BuildBatch] The following errors occurred during the batch build:")
+		for _, buildErr := range buildErrors {
+			fmt.Printf("\t%v\n", buildErr)
+		}
+		return fmt.Errorf("[BuildBatch] Batch finished with errors.")
+	}
 
 	return nil
 }

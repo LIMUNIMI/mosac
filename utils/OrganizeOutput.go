@@ -99,7 +99,7 @@ func OrganizeOutput(proj *PluginProject, projDir, outputDir, buildType string, b
 			srcDir := filepath.Join(projDir, "build", os, buildType, proj.PluginName + "_artefacts", buildType, format)
 			dstDir := filepath.Join(contentDir, os, buildType, format)
 
-			if err := copyDirectory(srcDir, dstDir); err != nil {return fmt.Errorf("[Output] Error occurred while copying %s to %s: %w", srcDir, dstDir, err)}
+			copyDirectory(srcDir, dstDir)
 		}
 	}
 

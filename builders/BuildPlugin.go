@@ -54,7 +54,8 @@ func printErrors(proj *utils.PluginProject) (error) {
 	if proj.CompanyEmail == "lim@di.unimi.it" || proj.CompanyEmail == " " || !strings.ContainsAny(proj.CompanyEmail, "@") {warnings += "\t- Company email is empty, invalid or set to default value.\n"}
 	if proj.PluginDesc == "insert here italian plugin description" || proj.PluginDesc == " " {warnings += "\t- Plugin description is empty or set to default value.\n"}
 	if proj.PluginCode == "Lim0" {warnings += "\t- Plugin code is empty or set to default value.\n"}
-
+	if proj.PluginManufacturerCode == " " || proj.PluginManufacturerCode == "Lim!" {warnings += "\t- Plugin manufacturer code is empty or set to default value.\n"}
+	
 	if warnings != "" {err = fmt.Errorf("[Warnings] Facultative fields missing:\n%s", warnings)}
 	return err
 }

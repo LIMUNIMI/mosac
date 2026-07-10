@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 	"path/filepath"
-	"regexp"
 )
 
 
@@ -49,7 +48,7 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 	proj.Name = getString(raw.Name, "MOSAC")
 	proj.Version = getString(raw.Version, "1.0.0")
 	proj.CompanyName = getString(raw.CompanyName, "Laboratorio_di_Informatica_Musicale")
-	proj.PluginManufacturerCode = getString(raw.PluginManufacturerCode, "LIM!")
+	proj.PluginManufacturerCode = getString(raw.PluginManufacturerCode, "Lim!")
 	proj.PluginManufacturer = getString(raw.PluginManufacturer, "LIM")
 	proj.PluginCode = getString(raw.PluginCode, "Lim0")
 	proj.PluginDesc = getString(raw.PluginDesc, "insert here italian plugin description")
@@ -96,8 +95,6 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 		return "FALSE"
 	}
 
-	proj.AAXDisableBypass = checkChar("pluginAAXDisableBypass")
-	proj.AAXDisableMultiMono = checkChar("pluginAAXDisableMultiMono")
 	proj.EditorRequiresKeys = checkChar("pluginEditorRequiresKeys")
 	proj.IsMidiEffect = checkChar("pluginIsMidiEffectPlugin")
 	proj.IsSynth = checkChar("pluginIsSynth")
@@ -107,7 +104,6 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 	// defaults
 	proj.BinaryDataNamespace = getString(raw.BinaryDataNamespace, "BinaryData")
 	proj.IncludeBinaryInJuceHeader = getInt(raw.IncludeBinaryInJuceHeader, 1)
-	proj.AddUsingNamespace = getString(raw.AddUsingNamespace, "0")
 
 	// VST3 category
 	vst3Str := getString(raw.PluginVST3Category, "Fx")
@@ -172,33 +168,13 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 		}
 	}
 
-	// header directories
-	if raw.HeaderPath != nil && *raw.HeaderPath != "" {
-		re := regexp.MustCompile(`^(\.\.?/)+`)
-		
-		lines := strings.Split(*raw.HeaderPath, "\n")
-		for _, line := range lines {
-			p := strings.TrimSpace(line)
-			if p != "" {
-				p = strings.ReplaceAll(p, "\\", "/")
-				p = re.ReplaceAllString(p, "")
-				proj.HeaderDirs = append(proj.HeaderDirs, p)
-			}
-		}
-	}
-
 	// source and asset files
 	var walkGroup func(g RawGroup)
 	walkGroup = func(g RawGroup) {
 		for _, f := range g.Files {
-			if f.File != "" {
-				if strings.HasSuffix(f.File, ".cpp") || strings.HasSuffix(f.File, ".c") { // source
-					proj.SourceFiles = append(proj.SourceFiles, f.File)
-				}
-				if f.Resource == "1" { // asset
+			if f.File != "" && f.Resource == "1" { // asset
 					proj.AssetFiles = append(proj.AssetFiles, f.File)
 				}
-			}
 		}
 		for _, childGroup := range g.Groups {
 			walkGroup(childGroup)
@@ -250,7 +226,7 @@ endfunction()
 	if proj.CompanyWebsite != "" {b.WriteString(fmt.Sprintf("\tCOMPANY_WEBSITE \"%s\"\n", proj.CompanyWebsite))}
 	if proj.CompanyCopyright != "" {b.WriteString(fmt.Sprintf("\tCOMPANY_COPYRIGHT \"%s\"\n", proj.CompanyCopyright))}
 	if proj.PluginDesc != "" {b.WriteString(fmt.Sprintf("\tDESCRIPTION \"%s\"\n", proj.PluginDesc))}
-
+	b.WriteString(fmt.Sprintf("\tPLUGIN_MANUFACTURER %s\n", proj.PluginManufacturer))
 	b.WriteString(fmt.Sprintf("\tPLUGIN_MANUFACTURER_CODE %s\n", proj.PluginManufacturerCode))
 	b.WriteString(fmt.Sprintf("\tPLUGIN_CODE %s\n", proj.PluginCode))
 	b.WriteString(fmt.Sprintf("\tPLUGIN_NAME %s\n", proj.PluginName))
@@ -310,23 +286,27 @@ endif()
 `
 	b.WriteString(strings.ReplaceAll(manifestStr, "--PLUGINNAME--", proj.PluginName))
 
-	// header directories
-	if len(proj.HeaderDirs) > 0 {
-		b.WriteString(fmt.Sprintf("target_include_directories(%s PRIVATE\n", proj.PluginName))
-		for _, src := range proj.HeaderDirs {
-			b.WriteString(fmt.Sprintf("\t\"%s\"\n", src))
-		}
-		b.WriteString(")\n\n")
-	}
-
 	// source files
-	if len(proj.SourceFiles) > 0 {
-		b.WriteString(fmt.Sprintf("target_sources(%s PRIVATE\n", proj.PluginName))
-		for _, src := range proj.SourceFiles {
-			b.WriteString(fmt.Sprintf("\t\"%s\"\n", src))
-		}
-		b.WriteString(")\n\n")
-	}
+	b.WriteString(fmt.Sprintf(`
+file(GLOB_RECURSE %s_SOURCES CONFIGURE_DEPENDS
+	${CMAKE_CURRENT_SOURCE_DIR}/Source/*.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Source/*.c
+	${CMAKE_CURRENT_SOURCE_DIR}/Source/*.h
+)
+target_sources(%s PRIVATE ${%s_SOURCES})
+
+`, proj.PluginName, proj.PluginName, proj.PluginName))
+
+	// headers
+	b.WriteString(fmt.Sprintf(`
+file(GLOB_RECURSE ALL_DIRS LIST_DIRECTORIES true "${CMAKE_CURRENT_SOURCE_DIR}/Source/*")
+foreach(DIR ${ALL_DIRS})
+	if(IS_DIRECTORY ${DIR})
+		target_include_directories(%s PRIVATE ${DIR})
+	endif()
+endforeach()
+
+`, proj.PluginName))
 
 	// compile definitions
 	b.WriteString(fmt.Sprintf("target_compile_definitions(%s\n\tPUBLIC\n", proj.PluginName))

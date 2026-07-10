@@ -65,7 +65,4 @@ func main() {
 
 	err := builders.BuildPlugin(*projectDir, *juceDir, *outputDir, *buildType, buildForOS, pluginFormats, *showWarnings)
 	if err != nil {fmt.Println(err)}
-
-
-
 }

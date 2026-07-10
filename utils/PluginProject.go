@@ -34,7 +34,6 @@ type RawJucerProject struct {
 	PluginCharacteristicsValue *string  `xml:"pluginCharacteristicsValue,attr"`
 	BinaryDataNamespace        *string  `xml:"binaryDataNamespace,attr"`
 	IncludeBinaryInJuceHeader  *int     `xml:"includeBinaryInJuceHeader,attr"`
-	AddUsingNamespace          *string  `xml:"addUsingNamespaceToJuceHeader,attr"`
 	PluginVST3Category         *string  `xml:"pluginVST3Category,attr"`
 	PluginAAXCategory          *string  `xml:"pluginAAXCategory,attr"`
 	PluginAUMainType           *string  `xml:"pluginAUMainType,attr"`
@@ -43,7 +42,6 @@ type RawJucerProject struct {
 	CompanyWebsite             *string  `xml:"companyWebsite,attr"`
 	CompanyCopyright           *string  `xml:"companyCopyright,attr"`
 
-	HeaderPath *string     `xml:"headerPath,attr"`
 	Modules    []RawModule `xml:"MODULES>MODULE"`
 	MainGroup  RawGroup    `xml:"MAINGROUP"`
 }
@@ -58,7 +56,6 @@ type PluginProject struct {
 	PluginDesc                string
 	PluginName                string
 	PluginFormats             []string
-	AAXDisableBypass          string   // "TRUE" or "FALSE"
 	AAXDisableMultiMono       string
 	EditorRequiresKeys        string
 	IsMidiEffect              string
@@ -67,7 +64,6 @@ type PluginProject struct {
 	ProducesMidiOut           string
 	BinaryDataNamespace       string
 	IncludeBinaryInJuceHeader int
-	AddUsingNamespace         string
 	PluginVST3Category        []string
 	PluginAAXCategory         []string
 	PluginAUMainType          string
@@ -77,9 +73,7 @@ type PluginProject struct {
 	CompanyCopyright          string
 
 	Modules     []string
-	SourceFiles []string
 	AssetFiles  []string
-	HeaderDirs  []string
 }
 
 func getString(ptr *string, defaultVal string) string {

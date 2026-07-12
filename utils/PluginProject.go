@@ -79,6 +79,7 @@ type PluginProject struct {
 	Defines                   []string
 	Modules                   []string
 	AssetFiles                []string
+	LibrarySources            []string
 }
 
 func getString(ptr *string, defaultVal string) string {

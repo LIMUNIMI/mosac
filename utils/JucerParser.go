@@ -1,18 +1,19 @@
 package utils
 
 import (
-	"slices"
 	"encoding/xml"
 	"fmt"
 	"os"
-	"strings"
 	"path/filepath"
+	"slices"
+	"strings"
 )
-
 
 func getJucerFilePath(ProjectPath string) (string, error) {
 	files, err := os.ReadDir(ProjectPath)
-	if err != nil {return "", fmt.Errorf("[Jucer2Cmake] Error while opening dir path %s: %w", ProjectPath, err)}
+	if err != nil {
+		return "", fmt.Errorf("[Jucer2Cmake] Error while opening dir path %s: %w", ProjectPath, err)
+	}
 
 	var jucerFiles []string
 
@@ -23,24 +24,33 @@ func getJucerFilePath(ProjectPath string) (string, error) {
 	}
 
 	count := len(jucerFiles)
-	if count == 0 {return "", fmt.Errorf("[Jucer2Cmake] No .jucer file found in directory: %s", ProjectPath)}
-	if count > 1 {return "", fmt.Errorf("[Jucer2Cmake] Too many .jucer files (%d) found in directory: %s", count, ProjectPath)}
+	if count == 0 {
+		return "", fmt.Errorf("[Jucer2Cmake] No .jucer file found in directory: %s", ProjectPath)
+	}
+	if count > 1 {
+		return "", fmt.Errorf("[Jucer2Cmake] Too many .jucer files (%d) found in directory: %s", count, ProjectPath)
+	}
 
 	absPath, err := filepath.Abs(filepath.Join(ProjectPath, jucerFiles[0]))
-	if err != nil {return "", fmt.Errorf("[Jucer2Cmake] Error while calculating absolute path: %w", err)}
+	if err != nil {
+		return "", fmt.Errorf("[Jucer2Cmake] Error while calculating absolute path: %w", err)
+	}
 
 	return absPath, nil
 }
-
 
 func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginProject, err error) {
 	var raw RawJucerProject
 
 	file, err := os.Open(jucerFilePath)
-	if err != nil {return nil, fmt.Errorf("[Jucer2Cmake] Error while opening file %s: %w", jucerFilePath, err)}
+	if err != nil {
+		return nil, fmt.Errorf("[Jucer2Cmake] Error while opening file %s: %w", jucerFilePath, err)
+	}
 
 	decoder := xml.NewDecoder(file)
-	if err := decoder.Decode(&raw); err != nil {return nil, fmt.Errorf("[Jucer2Cmake] Error while parsing XML: %w", err)}
+	if err := decoder.Decode(&raw); err != nil {
+		return nil, fmt.Errorf("[Jucer2Cmake] Error while parsing XML: %w", err)
+	}
 
 	proj = &PluginProject{}
 
@@ -114,22 +124,38 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 	var parsedAax []string
 	for _, c := range aaxCategoriesRaw {
 		switch c {
-		case "0": parsedAax = append(parsedAax, "None")
-		case "1": parsedAax = append(parsedAax, "EQ")
-		case "2": parsedAax = append(parsedAax, "Dynamics")
-		case "4": parsedAax = append(parsedAax, "PitchShift")
-		case "8": parsedAax = append(parsedAax, "Reverb")
-		case "16": parsedAax = append(parsedAax, "Delay")
-		case "32": parsedAax = append(parsedAax, "Modulation")
-		case "64": parsedAax = append(parsedAax, "Harmonic")
-		case "128": parsedAax = append(parsedAax, "NoiseReduction")
-		case "256": parsedAax = append(parsedAax, "Dither")
-		case "512": parsedAax = append(parsedAax, "SoundField")
-		case "1024": parsedAax = append(parsedAax, "HWGenerators")
-		case "2048": parsedAax = append(parsedAax, "SWGenerators")
-		case "4096": parsedAax = append(parsedAax, "WrappedPlugin")
-		case "8192": parsedAax = append(parsedAax, "Effect")
-		case "65536": parsedAax = append(parsedAax, "MIDIEffect")
+		case "0":
+			parsedAax = append(parsedAax, "None")
+		case "1":
+			parsedAax = append(parsedAax, "EQ")
+		case "2":
+			parsedAax = append(parsedAax, "Dynamics")
+		case "4":
+			parsedAax = append(parsedAax, "PitchShift")
+		case "8":
+			parsedAax = append(parsedAax, "Reverb")
+		case "16":
+			parsedAax = append(parsedAax, "Delay")
+		case "32":
+			parsedAax = append(parsedAax, "Modulation")
+		case "64":
+			parsedAax = append(parsedAax, "Harmonic")
+		case "128":
+			parsedAax = append(parsedAax, "NoiseReduction")
+		case "256":
+			parsedAax = append(parsedAax, "Dither")
+		case "512":
+			parsedAax = append(parsedAax, "SoundField")
+		case "1024":
+			parsedAax = append(parsedAax, "HWGenerators")
+		case "2048":
+			parsedAax = append(parsedAax, "SWGenerators")
+		case "4096":
+			parsedAax = append(parsedAax, "WrappedPlugin")
+		case "8192":
+			parsedAax = append(parsedAax, "Effect")
+		case "65536":
+			parsedAax = append(parsedAax, "MIDIEffect")
 		}
 	}
 	proj.PluginAAXCategory = parsedAax
@@ -137,16 +163,26 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 	// AU main type
 	auTypeStr := getString(raw.PluginAUMainType, "'aufx'")
 	switch auTypeStr {
-	case "'aufx'": proj.PluginAUMainType = "kAudioUnitType_Effect"
-	case "'aufc'": proj.PluginAUMainType = "kAudioUnitType_FormatConverter"
-	case "'augn'": proj.PluginAUMainType = "kAudioUnitType_Generator"
-	case "'aumi'": proj.PluginAUMainType = "kAudioUnitType_MIDIProcessor"
-	case "'aumx'": proj.PluginAUMainType = "kAudioUnitType_Mixer"
-	case "'aumu'": proj.PluginAUMainType = "kAudioUnitType_MusicDevice"
-	case "'aumf'": proj.PluginAUMainType = "kAudioUnitType_MusicEffect"
-	case "'auou'": proj.PluginAUMainType = "kAudioUnitType_Output"
-	case "'aupn'": proj.PluginAUMainType = "kAudioUnitType_Panner"
-	default: proj.PluginAUMainType = "'aufx'"
+	case "'aufx'":
+		proj.PluginAUMainType = "kAudioUnitType_Effect"
+	case "'aufc'":
+		proj.PluginAUMainType = "kAudioUnitType_FormatConverter"
+	case "'augn'":
+		proj.PluginAUMainType = "kAudioUnitType_Generator"
+	case "'aumi'":
+		proj.PluginAUMainType = "kAudioUnitType_MIDIProcessor"
+	case "'aumx'":
+		proj.PluginAUMainType = "kAudioUnitType_Mixer"
+	case "'aumu'":
+		proj.PluginAUMainType = "kAudioUnitType_MusicDevice"
+	case "'aumf'":
+		proj.PluginAUMainType = "kAudioUnitType_MusicEffect"
+	case "'auou'":
+		proj.PluginAUMainType = "kAudioUnitType_Output"
+	case "'aupn'":
+		proj.PluginAUMainType = "kAudioUnitType_Panner"
+	default:
+		proj.PluginAUMainType = "'aufx'"
 	}
 
 	// defines
@@ -168,13 +204,15 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 		}
 	}
 
-	// source and asset files
+	// external libraries and asset files
 	var walkGroup func(g RawGroup)
 	walkGroup = func(g RawGroup) {
 		for _, f := range g.Files {
 			if f.File != "" && f.Resource == "1" { // asset
-					proj.AssetFiles = append(proj.AssetFiles, f.File)
-				}
+				proj.AssetFiles = append(proj.AssetFiles, f.File)
+			} else if f.File != "" && strings.Contains(f.File, "Libraries") { // external libraries
+				proj.LibrarySources = append(proj.LibrarySources, f.File)
+			}
 		}
 		for _, childGroup := range g.Groups {
 			walkGroup(childGroup)
@@ -185,13 +223,16 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 	return proj, nil
 }
 
-
 func generateCMakeLists(proj *PluginProject, cmakeOutputPath string) error {
 	cmakeOutDir := filepath.Dir(cmakeOutputPath)
-	if err := os.MkdirAll(cmakeOutDir, 0755); err != nil {return fmt.Errorf("[Jucer2Cmake] Error creating output directory: %w", err)}
+	if err := os.MkdirAll(cmakeOutDir, 0755); err != nil {
+		return fmt.Errorf("[Jucer2Cmake] Error creating output directory: %w", err)
+	}
 
 	file, err := os.Create(cmakeOutputPath)
-	if err != nil {return fmt.Errorf("[Jucer2Cmake] Error creating CMakeLists.txt: %w", err)}
+	if err != nil {
+		return fmt.Errorf("[Jucer2Cmake] Error creating CMakeLists.txt: %w", err)
+	}
 	defer file.Close()
 
 	var b strings.Builder
@@ -212,7 +253,8 @@ function(get_os_name OUTPUT_VARIABLE)
   endif()
 endfunction()
 `
-	b.WriteString(osName);b.WriteString("\n")
+	b.WriteString(osName)
+	b.WriteString("\n")
 	b.WriteString("get_os_name(CURRENT_OS)\n")
 	b.WriteString("add_subdirectory(\"${JUCE_PATH}\" \"${PROJECT_DIR}/build/${CURRENT_OS}/JUCE_build\")\n\n")
 
@@ -222,10 +264,18 @@ endfunction()
 	b.WriteString(fmt.Sprintf("\tCOMPANY_NAME %s\n", proj.CompanyName))
 
 	// Metadati opzionali
-	if proj.CompanyEmail != "" {b.WriteString(fmt.Sprintf("\tCOMPANY_EMAIL \"%s\"\n", proj.CompanyEmail))}
-	if proj.CompanyWebsite != "" {b.WriteString(fmt.Sprintf("\tCOMPANY_WEBSITE \"%s\"\n", proj.CompanyWebsite))}
-	if proj.CompanyCopyright != "" {b.WriteString(fmt.Sprintf("\tCOMPANY_COPYRIGHT \"%s\"\n", proj.CompanyCopyright))}
-	if proj.PluginDesc != "" {b.WriteString(fmt.Sprintf("\tDESCRIPTION \"%s\"\n", proj.PluginDesc))}
+	if proj.CompanyEmail != "" {
+		b.WriteString(fmt.Sprintf("\tCOMPANY_EMAIL \"%s\"\n", proj.CompanyEmail))
+	}
+	if proj.CompanyWebsite != "" {
+		b.WriteString(fmt.Sprintf("\tCOMPANY_WEBSITE \"%s\"\n", proj.CompanyWebsite))
+	}
+	if proj.CompanyCopyright != "" {
+		b.WriteString(fmt.Sprintf("\tCOMPANY_COPYRIGHT \"%s\"\n", proj.CompanyCopyright))
+	}
+	if proj.PluginDesc != "" {
+		b.WriteString(fmt.Sprintf("\tDESCRIPTION \"%s\"\n", proj.PluginDesc))
+	}
 	b.WriteString(fmt.Sprintf("\tPLUGIN_MANUFACTURER %s\n", proj.PluginManufacturer))
 	b.WriteString(fmt.Sprintf("\tPLUGIN_MANUFACTURER_CODE %s\n", proj.PluginManufacturerCode))
 	b.WriteString(fmt.Sprintf("\tPLUGIN_CODE %s\n", proj.PluginCode))
@@ -240,10 +290,18 @@ endfunction()
 	b.WriteString("\tCOPY_PLUGIN_AFTER_BUILD FALSE")
 
 	// LV2, VST3, AAX, AU
-	if slices.Contains(proj.PluginFormats, "LV2") {b.WriteString(fmt.Sprintf("\n\tLV2URI \"https://www.lim.di.unimi.it/%s\"", proj.PluginName))}
-	if slices.Contains(proj.PluginFormats, "VST3") {b.WriteString(fmt.Sprintf("\n\tVST3_CATEGORIES \"%s\"\n\tVST3_AUTO_MANIFEST FALSE", strings.Join(proj.PluginVST3Category, "\" \"")))}
-	if slices.Contains(proj.PluginFormats, "AAX") {b.WriteString(fmt.Sprintf("\n\tAAX_CATEGORY %s", strings.Join(proj.PluginAAXCategory, "|")))}
-	if slices.Contains(proj.PluginFormats, "AU") {b.WriteString(fmt.Sprintf("\n\tAU_MAIN_TYPE %s", proj.PluginAUMainType))}
+	if slices.Contains(proj.PluginFormats, "LV2") {
+		b.WriteString(fmt.Sprintf("\n\tLV2URI \"https://www.lim.di.unimi.it/%s\"", proj.PluginName))
+	}
+	if slices.Contains(proj.PluginFormats, "VST3") {
+		b.WriteString(fmt.Sprintf("\n\tVST3_CATEGORIES \"%s\"\n\tVST3_AUTO_MANIFEST FALSE", strings.Join(proj.PluginVST3Category, "\" \"")))
+	}
+	if slices.Contains(proj.PluginFormats, "AAX") {
+		b.WriteString(fmt.Sprintf("\n\tAAX_CATEGORY %s", strings.Join(proj.PluginAAXCategory, "|")))
+	}
+	if slices.Contains(proj.PluginFormats, "AU") {
+		b.WriteString(fmt.Sprintf("\n\tAU_MAIN_TYPE %s", proj.PluginAUMainType))
+	}
 	b.WriteString(")\n\n")
 
 	b.WriteString(fmt.Sprintf("juce_generate_juce_header(%s)\n\n", proj.PluginName))
@@ -286,16 +344,22 @@ endif()
 `
 	b.WriteString(strings.ReplaceAll(manifestStr, "--PLUGINNAME--", proj.PluginName))
 
-	// source files
+	// source files + external libraries (if present)
+	libSources := ""
+	if len(proj.LibrarySources) > 0 {
+		libSources = "\n\t"
+		libSources += strings.Join(proj.LibrarySources, "\n\t")
+		libSources += "\n"
+	}
 	b.WriteString(fmt.Sprintf(`
 file(GLOB_RECURSE %s_SOURCES CONFIGURE_DEPENDS
 	${CMAKE_CURRENT_SOURCE_DIR}/Source/*.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/Source/*.c
 	${CMAKE_CURRENT_SOURCE_DIR}/Source/*.h
 )
-target_sources(%s PRIVATE ${%s_SOURCES})
+target_sources(%s PRIVATE ${%s_SOURCES}%s)
 
-`, proj.PluginName, proj.PluginName, proj.PluginName))
+`, proj.PluginName, proj.PluginName, proj.PluginName, libSources))
 
 	// headers
 	b.WriteString(fmt.Sprintf(`
@@ -343,25 +407,29 @@ endforeach()
 	b.WriteString("\t$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:-w>\n")
 	b.WriteString("\t$<$<CXX_COMPILER_ID:MSVC>:/W0>)\n")
 
-
 	_, err = file.WriteString(b.String())
 	return err
 }
-
 
 // Creates a CMakeLists.txt file from a JUCE .jucer (Basic Audio Plugin) project file.
 // It takes the path to the project directory and a list of plugin formats to include in the CMakeLists.txt file (it overrides the formats specified in the .jucer file if provided).
 // Returns a pointer to the parsed PluginProject struct and an error if any.
 func Jucer2Cmake(ProjectPath string, PluginFormats []string) (*PluginProject, error) {
 	filePath, err := getJucerFilePath(ProjectPath)
-	if err != nil {return nil, err}
+	if err != nil {
+		return nil, err
+	}
 
 	proj, err := parseJucerFile(filePath, PluginFormats)
-	if err != nil {return nil, err}
+	if err != nil {
+		return nil, err
+	}
 
 	cmakeOutputPath := filepath.Join(ProjectPath, "CMakeLists.txt")
 	err = generateCMakeLists(proj, cmakeOutputPath)
-	if err != nil {return nil, err}
+	if err != nil {
+		return nil, err
+	}
 
 	return proj, nil
 }

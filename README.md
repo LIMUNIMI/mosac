@@ -14,7 +14,8 @@ Its purpose is being able to compile JUCE/C++ code into various audio plugins fo
 ## Interfaces
 MOSAC works on **CLI**. The execution requires specific parameters as detailed in the application's **--help (or -h) section**. Once all parameters have been correctly supplied, the plugin build process is initiated automatically.
 
-*Tip*: before ever running MOSAC for its purpose, make sure to run it first with the `-img` flag in order to prepare all the Docker images needed.
+> [!TIP]
+Before ever running MOSAC for its purpose, make sure to run it first with the `-img` flag in order to prepare all the Docker images needed.
 
 ### Batch (multiple builds)
 **Batch mode** is activated via the `-batch` parameter, followed by the path to a **CSV file** containing the comprehensive list of project paths to be compiled, the desired JUCE path (specified for compatibility), their respective build configurations, the targeted operating systems and plugins format.
@@ -76,51 +77,23 @@ go build mosac.go
 ./mosac -PP /path/to/JUCEProject -JP /path/to/JUCE -OP /path/to/outputDir -sys Linux,Windows,MacOS -formats Standalone,VST3,AU,Unity,LV2 -b Release
 ```
 
-## Output
-After building the plugin, a `pluginName.json` gets generated as a summary.
+## Project structure
+This is the expected **Project structure**:
 ```
-outputDir
-├── plugin1
-│   ├── Linux
-│   │   ├── LV2
-│   │   ├── Standalone
-│   │   ├── Unity
-│   │   └── VST3
-│   ├── MacOS
-│   │   ├── AAX
-│   │   ├── AU
-│   │   ├── LV2
-│   │   ├── Standalone
-│   │   ├── Unity
-│   │   └── VST3
-│   └── Windows
-│       ├── AAX (warning)
-│       ├── LV2
-│       ├── Standalone
-│       ├── Unity
-│       └── VST3
-├── plugin1.json
-├── plugin2
-│   ├── Linux
-│   │   ├── LV2
-│   │   ├── Standalone
-│   │   ├── Unity
-│   │   └── VST3
-│   ├── MacOS
-│   │   ├── AAX
-│   │   ├── AU
-│   │   ├── LV2
-│   │   ├── Standalone
-│   │   ├── Unity
-│   │   └── VST3
-│   └── Windows
-│       ├── AAX (warning)
-│       ├── LV2
-│       ├── Standalone
-│       ├── Unity
-│       └── VST3
-└── plugin2.json
+ProjectDir
+├── Libraries  (optional)
+│   ├── Library1
+│   │   ├── file.cpp
+│   │   └── file.h
+│   └── Library2
+│       ├── file.cpp
+│       └── file.h
+├── plugin.jucer
+└── Source
+    ├── pluginCode.cpp
+    └── pluginCode.h
 ```
+If **external libraries** are used to develop the plugin, they must be placed in the `Libraries` folder and added to the `.jucer` file via Projucer.
 
 ### Notes
 - Please note that all the artefacts compiled by this script are **not signed**.

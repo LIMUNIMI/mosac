@@ -23,6 +23,7 @@ var (
 	buildImages = flag.Bool("img", false, "Builds required Docker images and stop the program.")
 	batchPath = flag.String("batch", "", "Path to a batch file containing multiple build commands.\nSee README.md for more information on the batch file format.")
 	showWarnings = flag.Bool("w", false, "Shows warnings for projects with facultative blank fields [skips the build].")
+	cleanBuild = flag.Bool("clean", false, "Cleans the /build directory before building the plugin.")
 )
 
 func main() {
@@ -50,7 +51,7 @@ func main() {
 
 		fmt.Printf("===== MOSAC - Batch Mode =====\nBatch file: %s\nOutput directory: %s\n\n--- START ---\n", batchPath, outputDir)
 
-		err = builders.BuildBatch(batchPath, outputDir, *showWarnings)
+		err = builders.BuildBatch(batchPath, outputDir, *showWarnings, *cleanBuild)
 		if err != nil {fmt.Println(err)}
 		
 		return
@@ -63,6 +64,6 @@ func main() {
 	buildForOS := strings.Split(*buildForOS, ",")
 	pluginFormats := strings.Split(*pluginFormats, ",")
 
-	err := builders.BuildPlugin(*projectDir, *juceDir, *outputDir, *buildType, buildForOS, pluginFormats, *showWarnings)
+	err := builders.BuildPlugin(*projectDir, *juceDir, *outputDir, *buildType, buildForOS, pluginFormats, *showWarnings, *cleanBuild)
 	if err != nil {fmt.Println(err)}
 }

@@ -62,7 +62,7 @@ func printErrors(proj *utils.PluginProject) (error) {
 
 
 
-func BuildPlugin(projDir string, juceDir string, outputDir string, buildType string, buildForOS, pluginFormats []string, showWarnings bool) (error) {
+func BuildPlugin(projDir string, juceDir string, outputDir string, buildType string, buildForOS, pluginFormats []string, showWarnings, cleanBuild bool) (error) {
 	if projDir == "" || juceDir == "" || outputDir == "" {return fmt.Errorf("[MOSAC] Please provide the required paths for the JUCE project, JUCE directory, and output directory.")}
 	if buildType != "Debug" && buildType != "Release" {return fmt.Errorf("[MOSAC] Invalid build type. Please specify either 'Debug' or 'Release'.")}
 	if len(buildForOS) == 0 {return fmt.Errorf("[MOSAC] Please specify at least one target OS.")}
@@ -89,6 +89,11 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 	if showWarnings {
 		err = printErrors(project)
 		if err != nil {return err}
+	}
+
+	if cleanBuild {
+		err = os.RemoveAll(filepath.Join(projDir, "build"))
+		if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while cleaning build directory: %w", err)}
 	}
 
 	// start build process
@@ -128,7 +133,7 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 
 
 // projectPath,jucePath,buildType,buildForOS,pluginFormats
-func BuildBatch(batchPath, outputDir string, showWarnings bool) error {
+func BuildBatch(batchPath, outputDir string, showWarnings, cleanBuild bool) error {
 	var buildErrors []error
 	file, err := os.Open(batchPath)
 	if err != nil {return fmt.Errorf("[BuildBatch] Error occurred while opening batch file: %w", err)}
@@ -152,7 +157,7 @@ func BuildBatch(batchPath, outputDir string, showWarnings bool) error {
 		if len(buildForOS) == 0 {buildForOS = append(buildForOS, "MacOS", "Linux", "Windows")}
 		if len(pluginFormats) == 0 {pluginFormats = append(pluginFormats, "Standalone", "LV2", "VST3", "AU", "Unity")}
 
-		err = BuildPlugin(projectPath, jucePath, outputDir, buildType, buildForOS, pluginFormats, showWarnings)
+		err = BuildPlugin(projectPath, jucePath, outputDir, buildType, buildForOS, pluginFormats, showWarnings, cleanBuild)
 		if err != nil {buildErrors = append(buildErrors, fmt.Errorf("[Plugin %d] Error occurred while building %s:\n\t%w", n+1, projectPath[strings.LastIndex(projectPath, "/")+1:], err))}
 		n++
 	}

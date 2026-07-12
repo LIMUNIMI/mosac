@@ -24,56 +24,61 @@ type RawJucerProject struct {
 	XMLName                    xml.Name `xml:"JUCERPROJECT"`
 	Name                       *string  `xml:"name,attr"`
 	Version                    *string  `xml:"version,attr"`
-	CompanyName                *string  `xml:"companyName,attr"`
-	PluginManufacturerCode     *string  `xml:"pluginManufacturerCode,attr"`
+
+	PluginName                 *string  `xml:"pluginName,attr"`
 	PluginManufacturer         *string  `xml:"pluginManufacturer,attr"`
+	PluginManufacturerCode     *string  `xml:"pluginManufacturerCode,attr"`
 	PluginCode                 *string  `xml:"pluginCode,attr"`
 	PluginDesc                 *string  `xml:"pluginDesc,attr"`
-	PluginName                 *string  `xml:"pluginName,attr"`
 	PluginFormats              *string  `xml:"pluginFormats,attr"`
-	PluginCharacteristicsValue *string  `xml:"pluginCharacteristicsValue,attr"`
-	BinaryDataNamespace        *string  `xml:"binaryDataNamespace,attr"`
-	IncludeBinaryInJuceHeader  *int     `xml:"includeBinaryInJuceHeader,attr"`
 	PluginVST3Category         *string  `xml:"pluginVST3Category,attr"`
 	PluginAAXCategory          *string  `xml:"pluginAAXCategory,attr"`
 	PluginAUMainType           *string  `xml:"pluginAUMainType,attr"`
-	Defines                    *string  `xml:"defines,attr"`
+	
+	PluginCharacteristicsValue *string  `xml:"pluginCharacteristicsValue,attr"`
+	IncludeBinaryInJuceHeader  *int     `xml:"includeBinaryInJuceHeader,attr"`
+	BinaryDataNamespace        *string  `xml:"binaryDataNamespace,attr"`
+	
+	CompanyName                *string  `xml:"companyName,attr"`
 	CompanyEmail               *string  `xml:"companyEmail,attr"`
 	CompanyWebsite             *string  `xml:"companyWebsite,attr"`
 	CompanyCopyright           *string  `xml:"companyCopyright,attr"`
-
-	Modules    []RawModule `xml:"MODULES>MODULE"`
-	MainGroup  RawGroup    `xml:"MAINGROUP"`
+	
+	Defines                    *string     `xml:"defines,attr"`
+	Modules                    []RawModule `xml:"MODULES>MODULE"`
+	MainGroup                  RawGroup    `xml:"MAINGROUP"`
 }
 
 type PluginProject struct {
 	Name                      string
 	Version                   string
-	CompanyName               string
-	PluginManufacturerCode    string
+	
+	PluginName                string
 	PluginManufacturer        string
+	PluginManufacturerCode    string
 	PluginCode                string
 	PluginDesc                string
-	PluginName                string
 	PluginFormats             []string
-	AAXDisableMultiMono       string
+	PluginVST3Category        []string
+	PluginAAXCategory         []string
+	PluginAUMainType          string
+	
 	EditorRequiresKeys        string
 	IsMidiEffect              string
 	IsSynth                   string
 	WantsMidiInput            string
 	ProducesMidiOut           string
-	BinaryDataNamespace       string
 	IncludeBinaryInJuceHeader int
-	PluginVST3Category        []string
-	PluginAAXCategory         []string
-	PluginAUMainType          string
-	Defines                   []string
+	BinaryDataNamespace       string
+	
+	CompanyName               string
 	CompanyEmail              string
 	CompanyWebsite            string
 	CompanyCopyright          string
-
-	Modules     []string
-	AssetFiles  []string
+	
+	Defines                   []string
+	Modules                   []string
+	AssetFiles                []string
 }
 
 func getString(ptr *string, defaultVal string) string {

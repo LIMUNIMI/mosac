@@ -20,6 +20,14 @@ MOSAC works on **CLI**. The execution requires specific parameters as detailed i
 **Batch mode** is activated via the `-batch` parameter, followed by the path to a **CSV file** containing the comprehensive list of project paths to be compiled, the desired JUCE path (specified for compatibility), their respective build configurations, the targeted operating systems and plugins format.
 It's recommended to specify also the `-OP` (*outputPath*) parameter.
 
+#### BatchMaker
+Inside the `BatchMaker` folder, you will find `BatchMaker.go` which allows you to generate a `batch.csv` file to use with `mosac.go`. This utility accepts **three command-line paths as arguments**: the directory containing the JUCE projects to be compiled with mosac, the JUCE framework path, and the output directory for the batch.csv file.
+The **command** to run this script is:
+```
+go run BatchMaker.go <dirPath> <JucePath> <outputPath>
+```
+> [!TIP]
+This utility is designed for rapid batch file creation. For complex batch requirements (such as using multiple JUCE versions), manual editing is advised.
 ##### Batch configuration file:
 
 | project_path            | juce_path    |  build_configuration | OS                  | plugin_formats  |

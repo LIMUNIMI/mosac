@@ -24,6 +24,30 @@ type PluginMetadata struct {
 }
 
 
+// copies .pdf and .md files from the src directory to the dest directory.
+func copyDocFiles(srcDir, destDir string) error {
+	entries, err := os.ReadDir(srcDir)
+	if err != nil {return fmt.Errorf("[Output] Errore lettura directory %s: %w", srcDir, err)}
+
+	for _, entry := range entries {
+		if entry.IsDir() {continue}
+
+		// either .pdf and .PDF or .md and .MD
+		ext := strings.ToLower(filepath.Ext(entry.Name()))
+		if ext == ".pdf" || ext == ".md" {
+			srcPath := filepath.Join(srcDir, entry.Name())
+			dstPath := filepath.Join(destDir, entry.Name())
+
+			data, err := os.ReadFile(srcPath)
+			if err != nil {return fmt.Errorf("[Output] Errore lettura documento %s: %w", entry.Name(), err)}
+
+			if err := os.WriteFile(dstPath, data, 0644); err != nil {return fmt.Errorf("[Output] Errore scrittura documento %s: %w", entry.Name(), err)}
+		}
+	}
+	return nil
+}
+
+
 // copies the contents of the source directory to the destination directory.
 func copyDirectory(src, dst string) error {
 	srcFS := os.DirFS(src)
@@ -123,6 +147,6 @@ func OrganizeOutput(proj *PluginProject, projDir, outputDir, buildType string, b
 	removeFiles(toBeRemoved)
 
 	if err := writeInfoToJson(proj, outputDir, buildForOS, filteredFormats); err != nil {return err}
-
+	if err := copyDocFiles(projDir, contentDir); err != nil {return err}
 	return nil
 }

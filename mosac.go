@@ -49,7 +49,7 @@ func main() {
 		outputDir, err := filepath.Abs(*outputDir)
 		if err != nil {fmt.Printf("[MOSAC] Error occurred while resolving output directory path: %v\n", err); return}
 
-		fmt.Printf("===== MOSAC - Batch Mode =====\nBatch file: %s\nOutput directory: %s\n\n--- START ---\n", batchPath, outputDir)
+		fmt.Printf("===== MOSAC - Batch Mode =====\nBatch file: %s\nOutput directory: %s\n==============================\n\n", batchPath, outputDir)
 
 		err = builders.BuildBatch(batchPath, outputDir, *showWarnings, *cleanBuild)
 		if err != nil {fmt.Println(err)}

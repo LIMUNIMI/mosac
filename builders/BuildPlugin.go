@@ -146,7 +146,8 @@ func BuildBatch(batchPath, outputDir string, showWarnings, cleanBuild bool) erro
 		
 		line := scanner.Text()
 		args := strings.Split(line, ",")
-		if len(args) != 5 {return fmt.Errorf("[BuildBatch] Invalid batch file format. See -h or --help for more information.")}
+		if line == "" || strings.HasPrefix(line, "#") {continue}
+		if len(args) != 5 {fmt.Println("[BuildBatch] Encountered invalid line: ", line);break}
 
 		projectPath := strings.TrimSpace(args[0])
 		jucePath := strings.TrimSpace(args[1])
@@ -156,6 +157,8 @@ func BuildBatch(batchPath, outputDir string, showWarnings, cleanBuild bool) erro
 
 		if len(buildForOS) == 0 {buildForOS = append(buildForOS, "MacOS", "Linux", "Windows")}
 		if len(pluginFormats) == 0 {pluginFormats = append(pluginFormats, "Standalone", "LV2", "VST3", "AU", "Unity")}
+
+		fmt.Printf("== %d° Plugin ==========\n", n+1)
 
 		err = BuildPlugin(projectPath, jucePath, outputDir, buildType, buildForOS, pluginFormats, showWarnings, cleanBuild)
 		if err != nil {buildErrors = append(buildErrors, fmt.Errorf("[Plugin %d] Error occurred while building %s:\n\t%w", n+1, projectPath[strings.LastIndex(projectPath, "/")+1:], err))}

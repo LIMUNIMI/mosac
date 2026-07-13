@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/xml"
+	"unicode"
 )
 
 
@@ -22,6 +23,7 @@ type RawModule struct {
 
 type RawJucerProject struct {
 	XMLName                    xml.Name `xml:"JUCERPROJECT"`
+	ID                         *string  `xml:"id,attr"`
 	Name                       *string  `xml:"name,attr"`
 	Version                    *string  `xml:"version,attr"`
 
@@ -50,6 +52,7 @@ type RawJucerProject struct {
 }
 
 type PluginProject struct {
+	ID 											  string
 	Name                      string
 	Version                   string
 	
@@ -90,4 +93,12 @@ func getString(ptr *string, defaultVal string) string {
 func getInt(ptr *int, defaultVal int) int {
 	if ptr != nil {return *ptr}
 	return defaultVal
+}
+
+// pluginCode generated from the project UID using the same logic as Projucer
+func getPluginCodeFromUID(uid string) string {
+	runes := []rune(uid[0:4])
+	runes[0] = unicode.ToUpper(runes[0])
+	for i := 1; i < 4; i++ {runes[i] = unicode.ToLower(runes[i])}
+	return string(runes)
 }

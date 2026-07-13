@@ -64,7 +64,7 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 	proj.CompanyName = getString(raw.CompanyName, "Laboratorio_di_Informatica_Musicale")
 	proj.PluginManufacturerCode = getString(raw.PluginManufacturerCode, "Lim!")
 	proj.PluginManufacturer = getString(raw.PluginManufacturer, "LIM")
-	proj.PluginCode = getString(raw.PluginCode, "Lim0")
+	proj.PluginCode = getString(raw.PluginCode, getPluginCodeFromUID(*raw.ID))
 	proj.PluginDesc = getString(raw.PluginDesc, "insert here italian plugin description")
 	proj.PluginName = getString(raw.PluginName, proj.Name)
 	proj.CompanyEmail = getString(raw.CompanyEmail, "lim@di.unimi.it")

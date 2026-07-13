@@ -409,9 +409,12 @@ endforeach()
 	b.WriteString("\tPUBLIC\n\t\tjuce::juce_recommended_config_flags\n\t\tjuce::juce_recommended_lto_flags\n\t\tjuce::juce_recommended_warning_flags)\n\n")
 
 	// compile options (suppress warnings)
-	b.WriteString(fmt.Sprintf("target_compile_options(%s PRIVATE\n", proj.PluginName))
-	b.WriteString("\t$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:-w>\n")
-	b.WriteString("\t$<$<CXX_COMPILER_ID:MSVC>:/W0>)\n")
+	b.WriteString(fmt.Sprintf(`target_compile_options(%s PRIVATE
+	$<$<CXX_COMPILER_ID:GNU>:-w>
+	$<$<CXX_COMPILER_ID:GNU>:-fpermissive>
+	$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-w>
+	$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-fms-compatibility>
+)`,  proj.PluginName))
 
 	_, err = file.WriteString(b.String())
 	return err
@@ -422,20 +425,14 @@ endforeach()
 // Returns a pointer to the parsed PluginProject struct and an error if any.
 func Jucer2Cmake(ProjectPath string, PluginFormats []string) (*PluginProject, error) {
 	filePath, err := getJucerFilePath(ProjectPath)
-	if err != nil {
-		return nil, err
-	}
+	if err != nil {return nil, err}
 
 	proj, err := parseJucerFile(filePath, PluginFormats)
-	if err != nil {
-		return nil, err
-	}
+	if err != nil {return nil, err}
 
 	cmakeOutputPath := filepath.Join(ProjectPath, "CMakeLists.txt")
 	err = generateCMakeLists(proj, cmakeOutputPath)
-	if err != nil {
-		return nil, err
-	}
+	if err != nil {return nil, err}
 
 	return proj, nil
 }

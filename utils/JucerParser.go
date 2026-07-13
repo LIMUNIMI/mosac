@@ -61,7 +61,7 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 	// apply minimum required metadata
 	proj.Name = getString(raw.Name, "MOSAC")
 	proj.Version = getString(raw.Version, "1.0.0")
-	proj.CompanyName = getString(raw.CompanyName, "Laboratorio_di_Informatica_Musicale")
+	proj.CompanyName = getString(raw.CompanyName, "Laboratorio di Informatica Musicale")
 	proj.PluginManufacturerCode = getString(raw.PluginManufacturerCode, "Lim!")
 	proj.PluginManufacturer = getString(raw.PluginManufacturer, "LIM")
 	proj.PluginCode = getString(raw.PluginCode, getPluginCodeFromUID(*raw.ID))
@@ -72,9 +72,8 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 	proj.CompanyCopyright = getString(raw.CompanyCopyright, proj.CompanyEmail)
 
 	// formatting
-	proj.Name = strings.ReplaceAll(proj.Name, " ", "_")
+	proj.Name = strings.ReplaceAll(proj.Name, " ", "-")
 	proj.PluginName = strings.ReplaceAll(proj.PluginName, " ", "_")
-	proj.CompanyName = strings.ReplaceAll(proj.CompanyName, " ", "_")
 
 	// pluginFormats
 	if len(pluginFormats) > 0 {
@@ -267,7 +266,7 @@ endfunction()
 	// juce_add_plugin
 	b.WriteString(fmt.Sprintf("juce_add_plugin(%s\n", proj.PluginName))
 	b.WriteString(fmt.Sprintf("\tVERSION %s\n", proj.Version))
-	b.WriteString(fmt.Sprintf("\tCOMPANY_NAME %s\n", proj.CompanyName))
+	b.WriteString(fmt.Sprintf("\tCOMPANY_NAME \"%s\"\n", proj.CompanyName))
 
 	// Metadati opzionali
 	if proj.CompanyEmail != "" {
@@ -282,10 +281,10 @@ endfunction()
 	if proj.PluginDesc != "" {
 		b.WriteString(fmt.Sprintf("\tDESCRIPTION \"%s\"\n", proj.PluginDesc))
 	}
-	b.WriteString(fmt.Sprintf("\tPLUGIN_MANUFACTURER %s\n", proj.PluginManufacturer))
+	b.WriteString(fmt.Sprintf("\tPLUGIN_MANUFACTURER \"%s\"\n", proj.PluginManufacturer))
 	b.WriteString(fmt.Sprintf("\tPLUGIN_MANUFACTURER_CODE %s\n", proj.PluginManufacturerCode))
 	b.WriteString(fmt.Sprintf("\tPLUGIN_CODE %s\n", proj.PluginCode))
-	b.WriteString(fmt.Sprintf("\tPLUGIN_NAME %s\n", proj.PluginName))
+	b.WriteString(fmt.Sprintf("\tPLUGIN_NAME \"%s\"\n", proj.PluginName))
 	b.WriteString(fmt.Sprintf("\tFORMATS %s\n", strings.Join(proj.PluginFormats, " ")))
 	b.WriteString(fmt.Sprintf("\tIS_SYNTH %s\n", proj.IsSynth))
 	b.WriteString(fmt.Sprintf("\tNEEDS_MIDI_INPUT %s\n", proj.WantsMidiInput))
@@ -297,7 +296,7 @@ endfunction()
 
 	// LV2, VST3, AAX, AU
 	if slices.Contains(proj.PluginFormats, "LV2") {
-		b.WriteString(fmt.Sprintf("\n\tLV2URI \"https://www.lim.di.unimi.it/%s\"", proj.PluginName))
+		b.WriteString(fmt.Sprintf("\n\tLV2URI \"%s/%s\"", proj.CompanyWebsite, proj.PluginName))
 	}
 	if slices.Contains(proj.PluginFormats, "VST3") {
 		b.WriteString(fmt.Sprintf("\n\tVST3_CATEGORIES \"%s\"\n\tVST3_AUTO_MANIFEST FALSE", strings.Join(proj.PluginVST3Category, "\" \"")))

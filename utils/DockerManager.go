@@ -24,7 +24,7 @@ import (
 var dockerfile string
 
 
-
+// StartDocker checks if Docker is running, if not, attempts to start it on MacOS.
 func StartDocker() (*client.Client, error) {
 	ctx := context.Background()
 
@@ -59,7 +59,7 @@ func StartDocker() (*client.Client, error) {
 }
 
 
-
+// builds the docker image from the embedded Dockerfile and specified target stage
 func BuildImageFromEmbedded(cli *client.Client, imageName string, targetStage string) error {
 	ctx := context.Background()
 
@@ -114,7 +114,7 @@ func BuildImageFromEmbedded(cli *client.Client, imageName string, targetStage st
 }
 
 
-
+// runs a container from the specified image, executes the provided command, and streams the output to stdout and stderr
 func RunContainer(cli *client.Client, imageName, targetStage string, command, binds []string) error {
 	ctx := context.Background()
 

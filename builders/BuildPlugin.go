@@ -29,7 +29,7 @@ var (
 )
 
 
-
+// checks if the provided list of arguments contains only valid arguments and no duplicates
 func containsValidArg(list []string, validArgs map[string]bool) bool {
 	seen := make(map[string]bool)
 	
@@ -44,7 +44,7 @@ func containsValidArg(list []string, validArgs map[string]bool) bool {
 }
 
 
-
+// prints warnings for missing facultative fields in the plugin project
 func printErrors(proj *utils.PluginProject) (error) {
 	var (
 		err error
@@ -61,7 +61,7 @@ func printErrors(proj *utils.PluginProject) (error) {
 }
 
 
-
+// builds the plugin project for the specified OS and plugin formats
 func BuildPlugin(projDir string, juceDir string, outputDir string, buildType string, buildForOS, pluginFormats []string, showWarnings, cleanBuild bool) (error) {
 	if projDir == "" || juceDir == "" || outputDir == "" {return fmt.Errorf("[MOSAC] Please provide the required paths for the JUCE project, JUCE directory, and output directory.")}
 	if buildType != "Debug" && buildType != "Release" {return fmt.Errorf("[MOSAC] Invalid build type. Please specify either 'Debug' or 'Release'.")}
@@ -132,7 +132,7 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 }
 
 
-// projectPath,jucePath,buildType,buildForOS,pluginFormats
+// builds multiple plugin projects specified in a batch file
 func BuildBatch(batchPath, outputDir string, showWarnings, cleanBuild bool) error {
 	var buildErrors []error
 	file, err := os.Open(batchPath)

@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+
+// returns the absolute path of the .jucer file in the specified project directory, or an error if not found or if multiple .jucer files are present.
 func getJucerFilePath(ProjectPath string) (string, error) {
 	files, err := os.ReadDir(ProjectPath)
 	if err != nil {
@@ -38,6 +40,8 @@ func getJucerFilePath(ProjectPath string) (string, error) {
 
 	return absPath, nil
 }
+
+
 
 func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginProject, err error) {
 	var raw RawJucerProject
@@ -222,6 +226,8 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 
 	return proj, nil
 }
+
+
 
 func generateCMakeLists(proj *PluginProject, cmakeOutputPath string) error {
 	cmakeOutDir := filepath.Dir(cmakeOutputPath)

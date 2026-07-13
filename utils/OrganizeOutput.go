@@ -24,7 +24,7 @@ type PluginMetadata struct {
 }
 
 
-
+// copies the contents of the source directory to the destination directory.
 func copyDirectory(src, dst string) error {
 	srcFS := os.DirFS(src)
 
@@ -55,13 +55,11 @@ func removeFiles(toBeRemoved []string) {
 }
 
 
-
+// creates a JSON file containing metadata about the current plugin build.
 func writeInfoToJson(proj *PluginProject, outputDir string, buildForOS, pluginFormats []string) error {
 	file, err := os.Create(filepath.Join(outputDir, fmt.Sprintf("%s.json", proj.PluginName)))
 	if err != nil {return fmt.Errorf("[Output] Error creating JSON file: %w", err)}
 	defer file.Close()
-
-	
 
 	jsonData := PluginMetadata{
 		PluginName:      strings.ReplaceAll(proj.PluginName, "_", " "),
@@ -87,7 +85,7 @@ func writeInfoToJson(proj *PluginProject, outputDir string, buildForOS, pluginFo
 
 
 
-
+// organizes the output of the plugin build process by copying the relevant files to a structured output directory and creating a JSON metadata file.
 func OrganizeOutput(proj *PluginProject, projDir, outputDir, buildType string, buildForOS, pluginFormats []string) error {
 	contentDir := filepath.Join(outputDir, proj.PluginName)
 	var (
@@ -121,6 +119,7 @@ func OrganizeOutput(proj *PluginProject, projDir, outputDir, buildType string, b
 		filepath.Join(contentDir, "Windows", buildType,"VST3", fmt.Sprintf("%s.lib", proj.PluginName)),
 	)
 
+	// remove manifest and .lib files that are not needed in the output directory
 	removeFiles(toBeRemoved)
 
 	if err := writeInfoToJson(proj, outputDir, buildForOS, filteredFormats); err != nil {return err}

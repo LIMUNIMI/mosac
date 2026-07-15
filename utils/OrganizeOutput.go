@@ -12,6 +12,7 @@ import (
 
 type PluginMetadata struct {
 	PluginName      string   `json:"pluginName"`
+	PluginVersion   string   `json:"pluginVersion"`
 	PluginDesc      string   `json:"pluginDesc"`
 	EnglishDesc     string   `json:"englishDesc"`
 	DownloadLink    string   `json:"downloadLink"`
@@ -32,9 +33,9 @@ func copyDocFiles(srcDir, destDir string) error {
 	for _, entry := range entries {
 		if entry.IsDir() {continue}
 
-		// either .pdf and .PDF or .md and .MD
+		// either .pdf and .PDF or .md and .MD or .txt
 		ext := strings.ToLower(filepath.Ext(entry.Name()))
-		if ext == ".pdf" || ext == ".md" {
+		if ext == ".pdf" || ext == ".md" || ext == ".txt" || ext == ".png" || ext == ".jpg" {
 			srcPath := filepath.Join(srcDir, entry.Name())
 			dstPath := filepath.Join(destDir, entry.Name())
 
@@ -87,6 +88,7 @@ func writeInfoToJson(proj *PluginProject, outputDir string, buildForOS, pluginFo
 
 	jsonData := PluginMetadata{
 		PluginName:      strings.ReplaceAll(proj.PluginName, "_", " "),
+		PluginVersion:   proj.Version,
 		PluginDesc:      proj.PluginDesc,
 		EnglishDesc:		 "insert here english plugin description",
 		DownloadLink:    "insert download link here",

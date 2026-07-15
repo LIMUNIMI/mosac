@@ -62,7 +62,7 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 	proj.Name = getString(raw.Name, "MOSAC")
 	proj.Version = getString(raw.Version, "1.0.0")
 	proj.CompanyName = getString(raw.CompanyName, "Laboratorio di Informatica Musicale")
-	proj.PluginManufacturerCode = getString(raw.PluginManufacturerCode, "Lim!")
+	proj.PluginManufacturerCode = getString(raw.PluginManufacturerCode, "LIM!")
 	proj.PluginManufacturer = getString(raw.PluginManufacturer, "LIM")
 	proj.PluginCode = getString(raw.PluginCode, getPluginCodeFromUID(*raw.ID))
 	proj.PluginDesc = getString(raw.PluginDesc, "insert here italian plugin description")
@@ -72,8 +72,9 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 	proj.CompanyCopyright = getString(raw.CompanyCopyright, proj.CompanyEmail)
 
 	// formatting
+	proj.CompanyName = strings.ReplaceAll(proj.CompanyName, " ", "-")
 	proj.Name = strings.ReplaceAll(proj.Name, " ", "-")
-	proj.PluginName = strings.ReplaceAll(proj.PluginName, " ", "_")
+	proj.PluginName = strings.ReplaceAll(proj.PluginName, " ", "-")
 
 	// pluginFormats
 	if len(pluginFormats) > 0 {
@@ -243,7 +244,7 @@ func generateCMakeLists(proj *PluginProject, cmakeOutputPath string) error {
 	var b strings.Builder
 
 	b.WriteString("cmake_minimum_required(VERSION 3.22)\n\n")
-	b.WriteString(fmt.Sprintf("project(%s VERSION %s)\n", proj.Name, proj.Version))
+	b.WriteString(fmt.Sprintf("project(%s VERSION %s)\nset(CMAKE_CXX_STANDARD 17)", proj.Name, proj.Version))
 
 	osName := `
 function(get_os_name OUTPUT_VARIABLE)
@@ -413,6 +414,7 @@ endforeach()
 	$<$<CXX_COMPILER_ID:GNU>:-fpermissive>
 	$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-w>
 	$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-fms-compatibility>
+	$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-Wno-deprecated-declarations>
 )`,  proj.PluginName))
 
 	_, err = file.WriteString(b.String())

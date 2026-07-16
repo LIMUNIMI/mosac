@@ -244,7 +244,7 @@ func generateCMakeLists(proj *PluginProject, cmakeOutputPath string) error {
 	var b strings.Builder
 
 	b.WriteString("cmake_minimum_required(VERSION 3.22)\n\n")
-	b.WriteString(fmt.Sprintf("project(%s VERSION %s)\nset(CMAKE_CXX_STANDARD 17)", proj.Name, proj.Version))
+	b.WriteString(fmt.Sprintf("project(%s VERSION %s)\nset(CMAKE_CXX_STANDARD 17)\nset(CMAKE_POSITION_INDEPENDENT_CODE ON)\n", proj.Name, proj.Version))
 
 	osName := `
 function(get_os_name OUTPUT_VARIABLE)

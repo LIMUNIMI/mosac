@@ -143,6 +143,7 @@ func OrganizeOutput(proj *PluginProject, projDir, outputDir, buildType string, b
 		filepath.Join(contentDir, "Windows", buildType,"Standalone", fmt.Sprintf("%s.exe.manifest", proj.PluginName)),
 		filepath.Join(contentDir, "Windows", buildType,"LV2", fmt.Sprintf("%s.lib", proj.PluginName)),
 		filepath.Join(contentDir, "Windows", buildType,"VST3", fmt.Sprintf("%s.lib", proj.PluginName)),
+		filepath.Join(contentDir, "Windows", buildType,"VST3", fmt.Sprintf("%s.vst3", proj.PluginName), "Contents", "X86_64-win", fmt.Sprintf("%s.vst3.manifest", proj.PluginName)),
 	)
 
 	// remove manifest and .lib files that are not needed in the output directory

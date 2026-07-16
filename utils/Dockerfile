@@ -57,12 +57,17 @@ RUN xwin_version="0.9.0" && \
   curl --fail -L https://github.com/Jake-Shadle/xwin/releases/download/$xwin_version/$xwin_prefix.tar.gz | \
   tar -xzv -C /usr/local/bin --strip-components=1 $xwin_prefix/xwin && \
   xwin --accept-license splat --output /xwin && \
-  rm -rf .xwin-cache && \
-  ln -sf /xwin/sdk/include/um/DbgHelp.h /xwin/sdk/include/um/Dbghelp.h && \
+  rm -rf .xwin-cache
+
+RUN ln -sf /xwin/sdk/include/um/DbgHelp.h /xwin/sdk/include/um/Dbghelp.h && \
   ln -sf /xwin/sdk/lib/um/x86_64/dbghelp.lib /xwin/sdk/lib/um/x86_64/DbgHelp.lib && \
   ln -sf /xwin/sdk/lib/um/x86_64/dwrite.lib /xwin/sdk/lib/um/x86_64/Dwrite.lib && \
   ln -sf /xwin/sdk/lib/um/x86_64/d2d1.lib /xwin/sdk/lib/um/x86_64/D2d1.lib && \
   ln -sf /xwin/sdk/lib/um/x86_64/dcomp.lib /xwin/sdk/lib/um/x86_64/DComp.lib
+
+RUN DXGI_PATH=$(find /xwin -type f -iname "dxgi.h" | head -n 1) && \
+    DXGI_DIR=$(dirname "$DXGI_PATH") && \
+    ln -sf "$DXGI_PATH" "$DXGI_DIR/Dxgi.h"
 
 ENV CL_FLAGS="-Wno-unused-command-line-argument -fuse-ld=lld-link /vctoolsdir /xwin/crt /winsdkdir /xwin/sdk"
 ENV CFLAGS_x86_64_pc_windows_msvc="$CL_FLAGS" \

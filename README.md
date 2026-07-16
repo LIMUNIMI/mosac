@@ -8,7 +8,6 @@ Its purpose is being able to compile JUCE/C++ code into various audio plugins fo
 - Docker
 - Golang (v1.26.4 or newer)
 - CMake (v3.22 or newer)
-- JUCE framework
 - Xcode (CLI version)
 
 ## Interfaces
@@ -30,7 +29,7 @@ go run BatchMaker.go <dirPath> <JucePath> <outputPath>
 ```
 If a project folder contains `mosac.conf`, the generated CSV leaves the JUCE column empty for that row so `mosac.go` can resolve it automatically.
 > [!TIP]
-This utility is designed for rapid batch file creation. For complex batch requirements (such as using multiple JUCE versions), manual editing is advised.
+This utility is designed for rapid batch file creation. For complex batch requirements (such as using multiple JUCE versions, or if you don't use mosac.conf file), manual editing is advised.
 ##### Batch configuration file:
 
 | project_path            | juce_path    |  build_configuration | OS                  | plugin_formats  |
@@ -57,26 +56,22 @@ This utility is designed for rapid batch file creation. For complex batch requir
 
 ## Installation & first run
 1) Download [Golang](https://go.dev/doc/install) v1.26.4 and [Docker](https://docs.docker.com/desktop/setup/install/mac-install/).
-2) Clone the JUCE framework directory:
-```
-git clone https://github.com/juce-framework/JUCE.git
-```
-3) Clone the repo:
+2) Clone the repo:
 ```
 git clone https://github.com/Carlo-Unimi/mosac_go.git
 ```
-4) Enter `mosac_go` and run:
+3) Enter `mosac_go` and run:
 ```
 go mod tidy
 ```
-5) Once the Go project is set run:
+4) Once the Go project is set run:
 ```
 go build mosac.go
 ./mosac -img
 ```
-6) Compile a JUCE plugin:
+5) Compile a JUCE plugin:
 ```
-./mosac -PP /path/to/JUCEProject -JP /path/to/JUCE -OP /path/to/outputDir -sys Linux,Windows,MacOS -formats Standalone,VST3,AU,Unity,LV2 -b Release
+./mosac -PP /path/to/JUCEProject -JP /path/to/JUCE -OP /path/to/outputDir -sys Linux,Windows,MacOS
 ```
 
 ## Project structure
@@ -91,9 +86,9 @@ ProjectDir
 │       ├── file.cpp
 │       └── file.h
 ├── plugin.jucer
-├── mosac.conf
-├── README.md
-├── pluginName.png
+├── mosac.conf  (optional)
+├── README.md   (optional)
+├── pluginName.png   (optional)
 └── Source
     ├── pluginCode.cpp
     └── pluginCode.h
@@ -101,7 +96,7 @@ ProjectDir
 If **external libraries** are used to develop the plugin, they must be placed in the `Libraries` folder and added to the `.jucer` file via Projucer.
 
 The `mosac.conf` file is read line by line:
-1. `JUCE7` or `JUCE8`, used to select the JUCE submodule in the MOSAC workspace.
+1. `JUCE-7` or `JUCE-8`, used to select the JUCE submodule in the MOSAC workspace.
 2. English plugin description.
 3. Authors, separated by commas.
 4. Emails, separated by commas.

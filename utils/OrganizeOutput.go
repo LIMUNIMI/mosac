@@ -35,7 +35,7 @@ func copyDocFiles(srcDir, destDir string) error {
 
 		// either .pdf and .PDF or .md and .MD or .txt
 		ext := strings.ToLower(filepath.Ext(entry.Name()))
-		if ext == ".pdf" || ext == ".md" || ext == ".txt" || ext == ".png" || ext == ".jpg" {
+		if ext == ".pdf" || ext == ".md" || (ext == ".txt" && entry.Name() != "CMakeLists.txt") || ext == ".png" || ext == ".jpg" {
 			srcPath := filepath.Join(srcDir, entry.Name())
 			dstPath := filepath.Join(destDir, entry.Name())
 

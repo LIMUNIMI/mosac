@@ -1,0 +1,6 @@
+[submodule "JUCE7"]
+	path = JUCE7
+	url = https://github.com/juce-framework/JUCE.git
+[submodule "JUCE8"]
+	path = JUCE8
+	url = https://github.com/juce-framework/JUCE.git

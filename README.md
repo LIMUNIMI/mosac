@@ -19,6 +19,7 @@ Before ever running MOSAC for its purpose, make sure to run it first with the `-
 
 ### Batch (multiple builds)
 **Batch mode** is activated via the `-batch` parameter, followed by the path to a **CSV file** containing the comprehensive list of project paths to be compiled, the desired JUCE path (specified for compatibility), their respective build configurations, the targeted operating systems and plugins format.
+If a project folder contains a `mosac.conf` file, the JUCE path is resolved from it and the CSV JUCE column becomes a fallback only.
 It's recommended to specify also the `-OP` (*outputPath*) parameter.
 
 #### BatchMaker
@@ -27,6 +28,7 @@ The **command** to run this script is:
 ```
 go run BatchMaker.go <dirPath> <JucePath> <outputPath>
 ```
+If a project folder contains `mosac.conf`, the generated CSV leaves the JUCE column empty for that row so `mosac.go` can resolve it automatically.
 > [!TIP]
 This utility is designed for rapid batch file creation. For complex batch requirements (such as using multiple JUCE versions), manual editing is advised.
 ##### Batch configuration file:
@@ -89,11 +91,22 @@ ProjectDir
 │       ├── file.cpp
 │       └── file.h
 ├── plugin.jucer
+├── mosac.conf
+├── README.md
+├── pluginName.png
 └── Source
     ├── pluginCode.cpp
     └── pluginCode.h
 ```
 If **external libraries** are used to develop the plugin, they must be placed in the `Libraries` folder and added to the `.jucer` file via Projucer.
+
+The `mosac.conf` file is read line by line:
+1. `JUCE7` or `JUCE8`, used to select the JUCE submodule in the MOSAC workspace.
+2. English plugin description.
+3. Authors, separated by commas.
+4. Emails, separated by commas.
+
+When present, this file also supplies the metadata written in the final JSON output.
 
 ### Notes
 - Please note that all the artefacts compiled by this script are **not signed**.

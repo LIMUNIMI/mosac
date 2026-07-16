@@ -57,10 +57,9 @@ func main() {
 		return
 	}
 
-	
 	// ===== SINGLE BUILD =====
 	fmt.Println("===== MOSAC =====")
-	
+
 	buildForOS := strings.Split(*buildForOS, ",")
 	pluginFormats := strings.Split(*pluginFormats, ",")
 

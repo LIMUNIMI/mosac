@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func main() {
 	if len(os.Args) < 4 {
 		fmt.Println("Error: missing arguments.")
 		fmt.Println("Usage: go run BatchMaker.go <dirPath> <JucePath> <outputPath>")
+		fmt.Println("If a project folder contains 'mosac.conf', the JUCE path column is left empty and the build will resolve the JUCE version automatically.")
 		return
 	}
 
@@ -48,7 +50,10 @@ func main() {
 	if err != nil {fmt.Printf("Error while creating the file %s: %v\n", "batch.csv", err);return}
 
 	for _, projPath := range ProjectPaths {
-		line := fmt.Sprintf("%s,%s,Release,Linux;Windows;MacOS,Standalone;VST3;AU;LV2;Unity\n", projPath, jucePath)
+		juceClm := jucePath // if dir contains mosac.conf, csv's JUCE path is emmpty
+		if info, err := os.Stat(filepath.Join(projPath, "mosac.conf")); err == nil && !info.IsDir() {juceClm = ""}
+
+		line := fmt.Sprintf("%s,%s,Release,Linux;Windows;MacOS,Standalone;VST3;AU;LV2;Unity\n", projPath, strings.TrimSpace(juceClm))
 		
 		_, err := file.WriteString(line)
 		if err != nil {

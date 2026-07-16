@@ -15,10 +15,8 @@ type PluginMetadata struct {
 	PluginVersion   string   `json:"pluginVersion"`
 	PluginDesc      string   `json:"pluginDesc"`
 	EnglishDesc     string   `json:"englishDesc"`
-	DownloadLink    string   `json:"downloadLink"`
-	DemoImageLink   string   `json:"demoImageLink"`
-	Authors         string   `json:"authors"`
-	Email           string   `json:"email"`
+	Authors         []string   `json:"authors"`
+	Email           []string   `json:"email"`
 	TargetOS        []string `json:"targetOS"`
 	CompiledFormats []string `json:"compiledFormats"`
 	FxCategory      []string `json:"FxCategory"`
@@ -81,20 +79,27 @@ func removeFiles(toBeRemoved []string) {
 
 
 // creates a JSON file containing metadata about the current plugin build.
-func writeInfoToJson(proj *PluginProject, outputDir string, buildForOS, pluginFormats []string) error {
+func writeInfoToJson(proj *PluginProject, config *MosacConfig, outputDir string, buildForOS, pluginFormats []string) error {
 	file, err := os.Create(filepath.Join(outputDir, fmt.Sprintf("%s.json", proj.PluginName)))
 	if err != nil {return fmt.Errorf("[Output] Error creating JSON file: %w", err)}
 	defer file.Close()
+
+	englishDesc := "insert here english plugin description"
+	authors := []string{"author1", "author2"}
+	email := []string{"email1@example.com", "email2@example.com"}
+	if config != nil {
+		englishDesc = config.EnglishDesc
+		authors = config.Authors
+		email = config.Emails
+	}
 
 	jsonData := PluginMetadata{
 		PluginName:      strings.ReplaceAll(proj.PluginName, "_", " "),
 		PluginVersion:   proj.Version,
 		PluginDesc:      proj.PluginDesc,
-		EnglishDesc:		 "insert here english plugin description",
-		DownloadLink:    "insert download link here",
-		DemoImageLink:   "insert demo image link here",
-		Authors:         "insert authors here",
-		Email:           "insert email here",
+		EnglishDesc:     englishDesc,
+		Authors:         authors,
+		Email:           email,
 		TargetOS:        buildForOS,
 		CompiledFormats: pluginFormats,
 		FxCategory:      proj.PluginVST3Category,
@@ -112,7 +117,7 @@ func writeInfoToJson(proj *PluginProject, outputDir string, buildForOS, pluginFo
 
 
 // organizes the output of the plugin build process by copying the relevant files to a structured output directory and creating a JSON metadata file.
-func OrganizeOutput(proj *PluginProject, projDir, outputDir, buildType string, buildForOS, pluginFormats []string) error {
+func OrganizeOutput(proj *PluginProject, config *MosacConfig, projDir, outputDir, buildType string, buildForOS, pluginFormats []string) error {
 	contentDir := filepath.Join(outputDir, proj.PluginName)
 	var (
 		err error
@@ -149,7 +154,7 @@ func OrganizeOutput(proj *PluginProject, projDir, outputDir, buildType string, b
 	// remove manifest and .lib files that are not needed in the output directory
 	removeFiles(toBeRemoved)
 
-	if err := writeInfoToJson(proj, outputDir, buildForOS, filteredFormats); err != nil {return err}
+	if err := writeInfoToJson(proj, config, outputDir, buildForOS, filteredFormats); err != nil {return err}
 	if err := copyDocFiles(projDir, contentDir); err != nil {return err}
 	return nil
 }

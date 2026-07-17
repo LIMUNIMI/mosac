@@ -10,7 +10,7 @@ import (
 func main() {
 	if len(os.Args) < 4 {
 		fmt.Println("Error: missing arguments.")
-		fmt.Println("Usage: go run BatchMaker.go <dirPath> <JucePath> <outputPath>")
+		fmt.Println("Usage: go run BatchMaker.go <dirPath> <JucePath> <batchOutputPath>")
 		fmt.Println("If a project folder contains 'mosac.conf', the JUCE path column is left empty and the build will resolve the JUCE version automatically.")
 		return
 	}

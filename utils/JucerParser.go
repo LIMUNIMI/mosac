@@ -75,6 +75,7 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 	proj.CompanyName = strings.ReplaceAll(proj.CompanyName, " ", "-")
 	proj.Name = strings.ReplaceAll(proj.Name, " ", "-")
 	proj.PluginName = strings.ReplaceAll(proj.PluginName, " ", "-")
+	if !strings.HasPrefix(proj.CompanyWebsite, "https://") {proj.CompanyWebsite = "https://" + proj.CompanyWebsite}
 
 	// pluginFormats
 	if len(pluginFormats) > 0 {

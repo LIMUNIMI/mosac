@@ -1,6 +1,7 @@
 package builders
 
 import (
+	"errors"
 	"fmt"
 	"mosac/utils"
 	"os"
@@ -106,37 +107,49 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 	}
 
 	// start build process
+	var (
+		successfulOS []string
+		buildErrors  []error
+	)
+
 	for _, os := range buildForOS {
 		switch os {
 		case "MacOS":
 			builder, err := NewMacOSBuilder(juceDir, projDir, buildType)
-			if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while creating MacOS builder: %w", err)}
+			if err != nil {buildErrors = append(buildErrors, fmt.Errorf("[BuildPlugin] Error occurred while creating MacOS builder: %w", err));continue}
 
 			err = builder.Build()
-			if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while building for MacOS: %w", err)}
+			if err != nil {buildErrors = append(buildErrors, fmt.Errorf("[BuildPlugin] Error occurred while building for MacOS: %w", err));continue}
+			successfulOS = append(successfulOS, os)
 		case "Linux":
 			builder, err := NewLinuxBuilder(juceDir, projDir, buildType)
-			if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while creating Linux builder: %w", err)}
+			if err != nil {buildErrors = append(buildErrors, fmt.Errorf("[BuildPlugin] Error occurred while creating Linux builder: %w", err));continue}
 			defer builder.Close()
 
 			err = builder.Build()
-			if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while building for Linux: %w", err)}
+			if err != nil {buildErrors = append(buildErrors, fmt.Errorf("[BuildPlugin] Error occurred while building for Linux: %w", err));continue}
+			successfulOS = append(successfulOS, os)
 		case "Windows":
 			builder, err := NewWindowsBuilder(juceDir, projDir, buildType)
-			if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while creating Windows builder: %w", err)}
+			if err != nil {buildErrors = append(buildErrors, fmt.Errorf("[BuildPlugin] Error occurred while creating Windows builder: %w", err));continue}
 			defer builder.Close()
 
 			err = builder.Build()
-			if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while building for Windows: %w", err)}
+			if err != nil {buildErrors = append(buildErrors, fmt.Errorf("[BuildPlugin] Error occurred while building for Windows: %w", err));continue}
+			successfulOS = append(successfulOS, os)
 		default:
-			return fmt.Errorf("[BuildPlugin] Invalid OS specified: %s", os)
+			buildErrors = append(buildErrors, fmt.Errorf("[BuildPlugin] Invalid OS specified: %s", os))
 		}
 	}
 
-	err = utils.OrganizeOutput(project, mosacConf, projDir, outputDir, buildType, buildForOS, pluginFormats)
-	if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while organizing output: %w", err)}
+	if len(successfulOS) > 0 {
+		err = utils.OrganizeOutput(project, mosacConf, projDir, outputDir, buildType, successfulOS, pluginFormats)
+		if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while organizing output: %w", err)}
+	}
 
 	fmt.Println("--- END ---")
+	if len(buildErrors) > 0 {return errors.Join(buildErrors...)}
+
 	return nil
 }
 

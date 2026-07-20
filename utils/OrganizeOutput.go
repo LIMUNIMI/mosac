@@ -26,7 +26,7 @@ type PluginMetadata struct {
 // copies .pdf and .md files from the src directory to the dest directory.
 func copyDocFiles(srcDir, destDir string) error {
 	entries, err := os.ReadDir(srcDir)
-	if err != nil {return fmt.Errorf("[Output] Errore lettura directory %s: %w", srcDir, err)}
+	if err != nil {return fmt.Errorf("[Output] Error reading directory %s: %w", srcDir, err)}
 
 	for _, entry := range entries {
 		if entry.IsDir() {continue}
@@ -38,9 +38,9 @@ func copyDocFiles(srcDir, destDir string) error {
 			dstPath := filepath.Join(destDir, entry.Name())
 
 			data, err := os.ReadFile(srcPath)
-			if err != nil {return fmt.Errorf("[Output] Errore lettura documento %s: %w", entry.Name(), err)}
+			if err != nil {return fmt.Errorf("[Output] Error reading document %s: %w", entry.Name(), err)}
 
-			if err := os.WriteFile(dstPath, data, 0644); err != nil {return fmt.Errorf("[Output] Errore scrittura documento %s: %w", entry.Name(), err)}
+			if err := os.WriteFile(dstPath, data, 0644); err != nil {return fmt.Errorf("[Output] Error writing document %s: %w", entry.Name(), err)}
 		}
 	}
 	return nil
@@ -62,7 +62,7 @@ func copyDirectory(src, dst string) error {
 		}
 
 		data, err := fs.ReadFile(srcFS, path)
-		if err != nil {return fmt.Errorf("errore lettura file %s: %w", path, err)}
+		if err != nil {return fmt.Errorf("[Output] Error reading file %s: %w", path, err)}
 
 		info, _ := d.Info()
 		return os.WriteFile(targetPath, data, info.Mode())
@@ -73,7 +73,8 @@ func copyDirectory(src, dst string) error {
 
 func removeFiles(toBeRemoved []string) {
 	for _, file := range toBeRemoved {
-		os.Remove(file)
+		err := os.Remove(file)
+		if err != nil {fmt.Printf("[Output] Error while removing file %s: %v\n", file, err)}
 	}
 }
 
@@ -147,8 +148,10 @@ func OrganizeOutput(proj *PluginProject, config *MosacConfig, projDir, outputDir
 	toBeRemoved = append(toBeRemoved, 
 		filepath.Join(contentDir, "Windows", buildType,"Standalone", fmt.Sprintf("%s.exe.manifest", proj.PluginName)),
 		filepath.Join(contentDir, "Windows", buildType,"LV2", fmt.Sprintf("%s.lib", proj.PluginName)),
+		filepath.Join(contentDir, "Windows", buildType,"LV2", fmt.Sprintf("%s.lv2", proj.PluginName), fmt.Sprintf("%s.dll.manifest", proj.PluginName)),
 		filepath.Join(contentDir, "Windows", buildType,"VST3", fmt.Sprintf("%s.lib", proj.PluginName)),
-		filepath.Join(contentDir, "Windows", buildType,"VST3", fmt.Sprintf("%s.vst3", proj.PluginName), "Contents", "X86_64-win", fmt.Sprintf("%s.vst3.manifest", proj.PluginName)),
+		filepath.Join(contentDir, "Windows", buildType,"VST3", fmt.Sprintf("%s.vst3", proj.PluginName), "Contents", "x86_64-win", fmt.Sprintf("%s.vst3.manifest", proj.PluginName)),
+		filepath.Join(contentDir, "Windows", buildType,"Unity", fmt.Sprintf("%s.dll.manifest", proj.PluginName)),
 	)
 
 	// remove manifest and .lib files that are not needed in the output directory

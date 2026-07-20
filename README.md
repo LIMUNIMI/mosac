@@ -58,7 +58,7 @@ This utility is designed for rapid batch file creation. For complex batch requir
 1) Download [Golang](https://go.dev/doc/install) v1.26.4 and [Docker](https://docs.docker.com/desktop/setup/install/mac-install/).
 2) Clone the repo:
 ```
-git clone https://github.com/Carlo-Unimi/mosac_go.git
+git clone https://github.com/LIMUNIMI/mosac.git --recursive
 ```
 3) Enter `mosac_go` and run:
 ```
@@ -100,10 +100,11 @@ The `mosac.conf` file is read line by line:
 2. English plugin description.
 3. Authors, separated by commas.
 4. Emails, separated by commas.
+5. One generic URL. (optional)
 
 When present, this file also supplies the metadata written in the final JSON output.
 
 ### Notes
 - Please note that all the artefacts compiled by this script are **not signed**.
-- **AAX** formats is not well supported for Windows due to cross-compilation. Additionalliy on MacOS it can only be used in Pro Tools Developer, if you want to use it in regular Pro Tools you must send a "plugin-signing" email to Avid.
+- **AAX** formats does not work for Windows due to cross-compilation issues. Additionalliy on MacOS it can only be used in Pro Tools Developer, if you want to use it in regular Pro Tools you must send a "plugin-signing" email to Avid.
 - Please ensure that all file names and `#include` paths strictly follow **case-sensitive** naming conventions. While Windows is case-insensitive, the Linux environment is not. Correct casing is essential to avoid compilation errors during cross-platform builds.

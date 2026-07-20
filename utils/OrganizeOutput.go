@@ -76,8 +76,7 @@ func copyDirectory(src, dst string) error {
 
 func removeFiles(toBeRemoved []string) {
 	for _, file := range toBeRemoved {
-		err := os.Remove(file)
-		if err != nil {fmt.Printf("[Output] Error while removing file %s: %v\n", file, err)}
+		os.Remove(file)
 	}
 }
 

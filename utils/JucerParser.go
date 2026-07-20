@@ -414,7 +414,6 @@ endforeach()
 	$<$<CXX_COMPILER_ID:GNU>:-w>
 	$<$<CXX_COMPILER_ID:GNU>:-fpermissive>
 	$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-w>
-	$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-fms-compatibility>
 	$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-Wno-deprecated-declarations>
 )`,  proj.PluginName))
 

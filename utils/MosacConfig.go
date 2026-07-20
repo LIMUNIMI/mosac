@@ -13,6 +13,7 @@ type MosacConfig struct {
 	EnglishDesc string
 	Authors     []string
 	Emails      []string
+	Url         string
 }
 
 func parseCommaSeparatedLine(line string) []string {
@@ -47,7 +48,7 @@ func LoadMosacConfig(projectDir string) (*MosacConfig, bool, error) {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	lines := make([]string, 0, 4)
+	lines := make([]string, 0, 5)
 	for scanner.Scan() {lines = append(lines, strings.TrimSpace(scanner.Text()))}
 
 	if err := scanner.Err(); err != nil {return nil, true, fmt.Errorf("[MosacConfig] error while reading %s: %w", configPath, err)}
@@ -57,11 +58,15 @@ func LoadMosacConfig(projectDir string) (*MosacConfig, bool, error) {
 	juceVersion, err := parseJuceVersion(lines[0])
 	if err != nil {return nil, true, err}
 
+	aux := ""
+	if len(lines) == 5 {if lines[4] != "" {aux = lines[4]}}
+
 	return &MosacConfig{
 		JuceVersion: juceVersion,
 		EnglishDesc: lines[1],
 		Authors:     parseCommaSeparatedLine(lines[2]),
 		Emails:      parseCommaSeparatedLine(lines[3]),
+		Url:         aux,
 	}, true, nil
 }
 

@@ -14,12 +14,15 @@ type PluginMetadata struct {
 	PluginName      string   `json:"pluginName"`
 	PluginVersion   string   `json:"pluginVersion"`
 	PluginDesc      string   `json:"pluginDesc"`
+	FxCategory      []string `json:"FxCategory"`
+	
 	EnglishDesc     string   `json:"englishDesc"`
 	Authors         []string   `json:"authors"`
 	Email           []string   `json:"email"`
+	Url             string   `json:"url"`
+
 	TargetOS        []string `json:"targetOS"`
 	CompiledFormats []string `json:"compiledFormats"`
-	FxCategory      []string `json:"FxCategory"`
 }
 
 
@@ -88,22 +91,28 @@ func writeInfoToJson(proj *PluginProject, config *MosacConfig, outputDir string,
 	englishDesc := "insert here english plugin description"
 	authors := []string{"author1", "author2"}
 	email := []string{"email1@example.com", "email2@example.com"}
+	url := ""
+
 	if config != nil {
 		englishDesc = config.EnglishDesc
 		authors = config.Authors
 		email = config.Emails
+		url = config.Url
 	}
 
 	jsonData := PluginMetadata{
 		PluginName:      strings.ReplaceAll(proj.PluginName, "_", " "),
 		PluginVersion:   proj.Version,
 		PluginDesc:      proj.PluginDesc,
+		FxCategory:      proj.PluginVST3Category,
+		
 		EnglishDesc:     englishDesc,
 		Authors:         authors,
 		Email:           email,
+		Url:						 url,
+
 		TargetOS:        buildForOS,
 		CompiledFormats: pluginFormats,
-		FxCategory:      proj.PluginVST3Category,
 	}
 
 	encoder := json.NewEncoder(file)

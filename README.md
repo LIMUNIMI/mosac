@@ -88,12 +88,15 @@ ProjectDir
 ├── plugin.jucer
 ├── mosac.conf  (optional)
 ├── README.md   (optional)
+├── Installers   (optional)
+├── Presets   (optional)
 ├── pluginName.png   (optional)
 └── Source
     ├── pluginCode.cpp
     └── pluginCode.h
 ```
 If **external libraries** are used to develop the plugin, they must be placed in the `Libraries` folder and added to the `.jucer` file via Projucer.
+`Presets` and `Installers` directories (if present) are directly copied to the plugin's output folder. 
 
 The `mosac.conf` file is read line by line:
 1. `JUCE-7` or `JUCE-8`, used to select the JUCE submodule in the MOSAC workspace.

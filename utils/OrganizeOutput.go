@@ -153,6 +153,14 @@ func OrganizeOutput(proj *PluginProject, config *MosacConfig, projDir, outputDir
 		}
 	}
 
+	// if "Presets" and "Installers" folder exists in the project directory, copy them to the output directory
+	if info, err := os.Stat(filepath.Join(projDir, "Presets")); err == nil && info.IsDir() {
+		copyDirectory(filepath.Join(projDir, "Presets"), filepath.Join(contentDir, "Presets"))
+	}
+	if info, err := os.Stat(filepath.Join(projDir, "Installers")); err == nil && info.IsDir() {
+		copyDirectory(filepath.Join(projDir, "Installers"), filepath.Join(contentDir, "Installers"))
+	}
+
 	toBeRemoved = append(toBeRemoved, 
 		filepath.Join(contentDir, "Windows", buildType,"Standalone", fmt.Sprintf("%s.exe.manifest", proj.PluginName)),
 		filepath.Join(contentDir, "Windows", buildType,"LV2", fmt.Sprintf("%s.lib", proj.PluginName)),

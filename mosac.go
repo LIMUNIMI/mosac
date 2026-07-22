@@ -36,6 +36,14 @@ func main() {
 		err = utils.BuildImageFromEmbedded(cli, "juce-builder:linux", "go_juce_builder_linux")
 		err = utils.BuildImageFromEmbedded(cli, "juce-builder:windows", "go_juce_builder_windows")
 		if err != nil {fmt.Printf("[MOSAC] Error occurred while building Docker images: %v\n", err)}
+
+		// change JUCE version if updated in the future
+		pathJUCE7, err := utils.ResolveJuceDirFromVersion("JUCE7")
+		if err != nil {fmt.Printf("[MOSAC] Error occurred while resolving JUCE7 directory: %v\n", err)}
+		pathJUCE8, err := utils.ResolveJuceDirFromVersion("JUCE8")
+		if err != nil {fmt.Printf("[MOSAC] Error occurred while resolving JUCE8 directory: %v\n", err)}
+		utils.CheckIfProjucerIsAlreadyBuilt(pathJUCE7)
+		utils.CheckIfProjucerIsAlreadyBuilt(pathJUCE8)
 		return
 	}
 

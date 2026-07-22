@@ -120,7 +120,7 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 	for _, os := range buildForOS {
 		switch os {
 		case "MacOS":
-			builder, err := NewMacOSBuilder(juceDir, projDir, buildType)
+			builder, err := NewMacOSBuilder(juceDir, projDir, project.PluginName, buildType, pluginFormats)
 			if err != nil {buildErrors = append(buildErrors, fmt.Errorf("[BuildPlugin] Error occurred while creating MacOS builder: %w", err));continue}
 
 			err = builder.Build()

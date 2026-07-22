@@ -379,6 +379,9 @@ endforeach()
 
 `, proj.PluginName))
 
+	// Libraries folder
+	b.WriteString(fmt.Sprintf("target_include_directories(%s SYSTEM PRIVATE \"${CMAKE_CURRENT_SOURCE_DIR}/Libraries\")\n\n", proj.PluginName))
+
 	// compile definitions
 	b.WriteString(fmt.Sprintf("target_compile_definitions(%s\n\tPUBLIC\n", proj.PluginName))
 	for _, define := range proj.Defines {

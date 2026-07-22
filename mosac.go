@@ -42,8 +42,10 @@ func main() {
 		if err != nil {fmt.Printf("[MOSAC] Error occurred while resolving JUCE7 directory: %v\n", err)}
 		pathJUCE8, err := utils.ResolveJuceDirFromVersion("JUCE8")
 		if err != nil {fmt.Printf("[MOSAC] Error occurred while resolving JUCE8 directory: %v\n", err)}
-		utils.CheckIfProjucerIsAlreadyBuilt(pathJUCE7)
-		utils.CheckIfProjucerIsAlreadyBuilt(pathJUCE8)
+		_, err = utils.CheckIfProjucerIsAlreadyBuilt(pathJUCE7)
+		if err != nil {fmt.Printf("[MOSAC] Error occurred while checking Projucer for JUCE7: %v\n", err)}
+		_, err = utils.CheckIfProjucerIsAlreadyBuilt(pathJUCE8)
+		if err != nil {fmt.Printf("[MOSAC] Error occurred while checking Projucer for JUCE8: %v\n", err)}
 		return
 	}
 

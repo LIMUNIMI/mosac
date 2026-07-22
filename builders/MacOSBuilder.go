@@ -12,9 +12,9 @@ import (
 type MacOSBuilder struct {
 	buildCommand []string
 
-	projucerPath string
+	projucerPath     string
 	xcodeProjectPath string
-	pluginFormats []string
+	pluginFormats    []string
 }
 
 
@@ -24,13 +24,15 @@ func NewMacOSBuilder(jucePath, projectPath, pluginName, buildConfiguration strin
 
 	err = utils.ResaveProject(projectPath, projucerPath, pluginName, pluginFormats)
 	if err != nil {return nil, err}
+	
+	xcodeProjectPath := filepath.Join(projectPath, "Builds", "MacOSX", pluginName+".xcodeproj")
 
 	return &MacOSBuilder{
-		projucerPath: projucerPath,
-		xcodeProjectPath: filepath.Join(projectPath, "Builds", "MacOSX", pluginName+".xcodeproj"),
-		pluginFormats: pluginFormats,
+		projucerPath:     projucerPath,
+		xcodeProjectPath: xcodeProjectPath,
+		pluginFormats:    pluginFormats,
 
-		buildCommand: []string{"xcodebuild", "-project", projectPath, "-configuration", buildConfiguration},
+		buildCommand: []string{"xcodebuild", "-project", xcodeProjectPath, "-configuration", buildConfiguration},
 	}, nil
 }
 

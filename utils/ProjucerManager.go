@@ -9,6 +9,10 @@ import (
 	"strings"
 )
 
+func projucerExecutablePath(projucerAppPath string) string {
+	return filepath.Join(projucerAppPath, "Contents", "MacOS", "Projucer")
+}
+
 // checks if Projucer is already built in the given JUCE directory. If not, it builds Projucer and returns its path.
 func CheckIfProjucerIsAlreadyBuilt(jucePath string) (string, error) {
 	projucerPath, err := filepath.Abs(filepath.Join(jucePath, "extras", "Projucer", "Builds", "MacOSX", "build", "Release", "Projucer.app"))
@@ -20,7 +24,7 @@ func CheckIfProjucerIsAlreadyBuilt(jucePath string) (string, error) {
 		if err != nil {return "", fmt.Errorf("[MacOSBuilder] Error occurred while building Projucer: %w", err)}
 	}
 
-	return projucerPath, nil
+	return projucerExecutablePath(projucerPath), nil
 }
 
 
@@ -50,22 +54,24 @@ func buildProjucer(juceDir string) (error) {
 // resaves the Jucer project using --resave
 func ResaveProject(projectPath, projucerPath, pluginName string, pluginFormats []string) error {
 	jucerFilePath := filepath.Join(projectPath, pluginName+".jucer")
+	projucerFormats := make([]string, len(pluginFormats))
+	copy(projucerFormats, pluginFormats)
 
 	// substitute the current plugin formats in the Jucer project file with the selected ones (parameter)
-	for i, format := range pluginFormats {
+	for i, format := range projucerFormats {
 		switch format {
 		case "Standalone":
-			pluginFormats[i] = "buildStandalone"
+			projucerFormats[i] = "buildStandalone"
 		case "LV2":
-			pluginFormats[i] = "buildLV2"
+			projucerFormats[i] = "buildLV2"
 		case "VST3":
-			pluginFormats[i] = "buildVST3"
+			projucerFormats[i] = "buildVST3"
 		case "AU":
-			pluginFormats[i] = "buildAU"
+			projucerFormats[i] = "buildAU"
 		case "Unity":
-			pluginFormats[i] = "buildUnity"
+			projucerFormats[i] = "buildUnity"
 		case "AAX":
-			pluginFormats[i] = "buildAAX"
+			projucerFormats[i] = "buildAAX"
 		default:
 			return fmt.Errorf("[Mosac] Invalid plugin format: %s", format)
 		}
@@ -75,14 +81,14 @@ func ResaveProject(projectPath, projucerPath, pluginName string, pluginFormats [
 	if err != nil {return fmt.Errorf("[Mosac] Error occurred while reading Jucer project file: %w", err)}
 	
 	// replace the plugin formats in the Jucer project file
-	joined := strings.Join(pluginFormats, ",")
+	joined := strings.Join(projucerFormats, ",")
 	re := regexp.MustCompile(`pluginFormats\s*=\s*"[^"]*"`)
 	replacement := `pluginFormats="` + joined + `"`
 	newContent := re.ReplaceAllString(string(file), replacement)
 	
 	if err = os.WriteFile(jucerFilePath, []byte(newContent), 0o644); err != nil {return fmt.Errorf("[Mosac] Error occurred while writing Jucer project file: %w", err)}
 
-	cmd := exec.Command("."+projucerPath, "--resave", jucerFilePath)
+	cmd := exec.Command(projucerPath, "--resave", jucerFilePath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 

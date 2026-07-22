@@ -55,12 +55,12 @@ This utility is designed for rapid batch file creation. For complex batch requir
 ```
 
 ## Installation & first run
-1) Download [Golang](https://go.dev/doc/install) v1.26.4 and [Docker](https://docs.docker.com/desktop/setup/install/mac-install/).
+1) Download [Golang](https://go.dev/doc/install) v1.26.4, [Docker](https://docs.docker.com/desktop/setup/install/mac-install/) and [CMake](https://cmake.org/download/).
 2) Clone the repo:
 ```
 git clone https://github.com/LIMUNIMI/mosac.git --recursive
 ```
-3) Enter `mosac_go` and run:
+3) Enter `mosac` and run:
 ```
 go mod tidy
 ```
@@ -71,14 +71,14 @@ go build mosac.go
 ```
 5) Compile a JUCE plugin:
 ```
-./mosac -PP /path/to/JUCEProject -JP /path/to/JUCE -OP /path/to/outputDir -sys Linux,Windows,MacOS
+./mosac -PP /path/to/JUCEProject -JP /path/to/JUCE -OP /path/to/outputDir -sys Linux,Windows,MacOS -formats Standalone,VST3,AU,Unity,LV2,AAX
 ```
 
 ## Project structure
 This is the expected **Project structure**:
 ```
 ProjectDir
-├── Libraries  (optional)
+├── Libraries        (optional)
 │   ├── Library1
 │   │   ├── file.cpp
 │   │   └── file.h
@@ -86,10 +86,10 @@ ProjectDir
 │       ├── file.cpp
 │       └── file.h
 ├── plugin.jucer
-├── mosac.conf  (optional)
-├── README.md   (optional)
-├── Installers   (optional)
-├── Presets   (optional)
+├── mosac.conf       (optional)
+├── README.md        (optional)
+├── Installers       (optional)
+├── Presets          (optional)
 ├── pluginName.png   (optional)
 └── Source
     ├── pluginCode.cpp

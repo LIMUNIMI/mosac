@@ -169,9 +169,10 @@ func OrganizeOutput(proj *PluginProject, config *MosacConfig, projDir, outputDir
 		filepath.Join(contentDir, "Windows", buildType,"VST3", fmt.Sprintf("%s.vst3", proj.PluginName), "Contents", "x86_64-win", fmt.Sprintf("%s.vst3.manifest", proj.PluginName)),
 		filepath.Join(contentDir, "Windows", buildType,"Unity", fmt.Sprintf("%s.dll.manifest", proj.PluginName)),
 	)
-
-	// remove manifest and .lib files that are not needed in the output directory
+	
+	// remove manifest and .lib files that are not needed in the output directory (also removes AAX folder if it exists)
 	removeFiles(toBeRemoved)
+	os.RemoveAll(filepath.Join(contentDir, "Windows", buildType,"AAX"))
 
 	if err := writeInfoToJson(proj, config, outputDir, buildForOS, filteredFormats); err != nil {return err}
 	if err := copyDocFiles(projDir, contentDir); err != nil {return err}

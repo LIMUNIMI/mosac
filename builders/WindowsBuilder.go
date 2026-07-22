@@ -54,15 +54,6 @@ func NewWindowsBuilder(jucePath, projectPath, buildConfiguration string) (*Windo
 }
 
 
-// checks if the line contains only AAX label (no other formats)
-func buildingOnlyAAX(line string) bool {
-	formats := strings.Fields(line)
-	if len(formats[1:]) == 1 {return true}
-
-	return false
-}
-
-
 // removes AAX label from CMakeLists.txt file to avoid building it. (generates error on Windows cross-compilation)
 func removeAAXLabelFromCMakeLists(cmakeFilePath string) error {
 	cmakelists, err := os.ReadFile(cmakeFilePath)
@@ -73,7 +64,7 @@ func removeAAXLabelFromCMakeLists(cmakeFilePath string) error {
 
 	// if file contains AAX label, remove it
 	for i := range lines {
-		if strings.Contains(lines[i], "FORMATS") && strings.Contains(lines[i], "AAX") && !buildingOnlyAAX(lines[i]) {
+		if strings.Contains(lines[i], "FORMATS") && strings.Contains(lines[i], "AAX"){
 			lines[i] = strings.Replace(lines[i], "AAX", "", 1)
 			fmt.Println("[WindowsBuilder] Removed AAX label from CMakeLists.txt file.")
 			modified = true

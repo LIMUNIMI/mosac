@@ -72,7 +72,12 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 	if !containsValidArg(pluginFormats, validFormats) {return fmt.Errorf("[MOSAC] Please specify at least one valid plugin format (Standalone, LV2, VST3, AU, Unity, or AAX).")}
 
 	// make every path absolute
-	var err error
+	var (
+		err error
+		skipLinuxAndWin = false
+		successfulOS []string
+		buildErrors  []error
+	)
 	projDir, err = filepath.Abs(projDir)
 	if err != nil {return fmt.Errorf("[MOSAC] Error occurred while resolving project directory path: %w", err)}
 	outputDir, err = filepath.Abs(outputDir)
@@ -106,12 +111,12 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 		if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while cleaning build directory: %w", err)}
 	}
 
+	if len(pluginFormats) == 1 && pluginFormats[0] == "AAX" {
+		fmt.Println("[BuildPlugin] AAX format is only supported on MacOS. Linux and Windows builds will be skipped.")
+		skipLinuxAndWin = true
+	}
+	
 	// start build process
-	var (
-		successfulOS []string
-		buildErrors  []error
-	)
-
 	for _, os := range buildForOS {
 		switch os {
 		case "MacOS":
@@ -122,6 +127,7 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 			if err != nil {buildErrors = append(buildErrors, fmt.Errorf("[BuildPlugin] Error occurred while building for MacOS: %w", err));continue}
 			successfulOS = append(successfulOS, os)
 		case "Linux":
+			if skipLinuxAndWin {fmt.Println("[BuildPlugin] Skipping Linux build due to AAX format selection.");continue}
 			builder, err := NewLinuxBuilder(juceDir, projDir, buildType)
 			if err != nil {buildErrors = append(buildErrors, fmt.Errorf("[BuildPlugin] Error occurred while creating Linux builder: %w", err));continue}
 			defer builder.Close()
@@ -130,6 +136,7 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 			if err != nil {buildErrors = append(buildErrors, fmt.Errorf("[BuildPlugin] Error occurred while building for Linux: %w", err));continue}
 			successfulOS = append(successfulOS, os)
 		case "Windows":
+			if skipLinuxAndWin {fmt.Println("[BuildPlugin] Skipping Windows build due to AAX format selection.");continue}
 			builder, err := NewWindowsBuilder(juceDir, projDir, buildType)
 			if err != nil {buildErrors = append(buildErrors, fmt.Errorf("[BuildPlugin] Error occurred while creating Windows builder: %w", err));continue}
 			defer builder.Close()

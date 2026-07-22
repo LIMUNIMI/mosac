@@ -2,6 +2,8 @@ package builders
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	"mosac/utils"
 
@@ -52,6 +54,42 @@ func NewWindowsBuilder(jucePath, projectPath, buildConfiguration string) (*Windo
 }
 
 
+// checks if the line contains only AAX label (no other formats)
+func buildingOnlyAAX(line string) bool {
+	formats := strings.Fields(line)
+	if len(formats[1:]) == 1 {return true}
+
+	return false
+}
+
+
+// removes AAX label from CMakeLists.txt file to avoid building it. (generates error on Windows cross-compilation)
+func removeAAXLabelFromCMakeLists(cmakeFilePath string) error {
+	cmakelists, err := os.ReadFile(cmakeFilePath)
+	if err != nil {return fmt.Errorf("[WindowsBuilder] Error occurred while reading CMakeLists.txt file: %w", err)}
+
+	lines := strings.Split(string(cmakelists), "\n")
+	modified := false
+
+	// if file contains AAX label, remove it
+	for i := range lines {
+		if strings.Contains(lines[i], "FORMATS") && strings.Contains(lines[i], "AAX") && !buildingOnlyAAX(lines[i]) {
+			lines[i] = strings.Replace(lines[i], "AAX", "", 1)
+			fmt.Println("[WindowsBuilder] Removed AAX label from CMakeLists.txt file.")
+			modified = true
+		}
+	}
+
+	// if modified, write the modified content back to the file
+	if modified {
+		newCmakeLists := strings.Join(lines, "\n")
+		err = os.WriteFile(cmakeFilePath, []byte(newCmakeLists), 0644)
+		if err != nil {return fmt.Errorf("[WindowsBuilder] Error occurred while writing modified CMakeLists.txt file: %w", err)}
+	}
+
+	return nil
+}
+
 
 func (b *WindowsBuilder) Build() error {
 	imageName := "juce-builder:windows"
@@ -59,12 +97,15 @@ func (b *WindowsBuilder) Build() error {
 
 	fmt.Println("[WindowsBuilder] Preparing environment...")
 
+	err := removeAAXLabelFromCMakeLists(fmt.Sprintf("%s/CMakeLists.txt", b.ProjectPath))
+	if err != nil {return err}
+
 	binds := []string{
 		fmt.Sprintf("%s:/opt", b.JucePath),
 		fmt.Sprintf("%s:/workspace", b.ProjectPath),
 	}
 
-	err := utils.RunContainer(b.DockerCli, imageName, targetStage, b.buildCommand, binds)
+	err = utils.RunContainer(b.DockerCli, imageName, targetStage, b.buildCommand, binds)
 	if err != nil {return err}
 
 	return nil

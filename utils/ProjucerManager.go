@@ -19,7 +19,8 @@ func CheckIfProjucerIsAlreadyBuilt(jucePath string) (string, error) {
 	if err != nil {return "", fmt.Errorf("[MacOSBuilder] Error occurred while resolving Projucer path: %w", err)}
 
 	if _, err := os.Stat(projucerPath); os.IsNotExist(err) {
-		fmt.Println("[MacOSBuilder] Projucer not found. Building Projucer...")
+		fmt.Println("[MacOSBuilder] WARNING!")
+		fmt.Println("=================================================\n|| Building Projucer, this may take a while... ||\n=================================================")
 		err = buildProjucer(jucePath)
 		if err != nil {return "", fmt.Errorf("[MacOSBuilder] Error occurred while building Projucer: %w", err)}
 	}

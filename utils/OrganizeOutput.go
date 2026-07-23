@@ -144,7 +144,16 @@ func OrganizeOutput(proj *PluginProject, config *MosacConfig, projDir, outputDir
 
 	if err = os.MkdirAll(contentDir, os.ModePerm); err != nil {return fmt.Errorf("[Output] Error occurred while creating output directory: %w", err)}
 
+	// if macOS is in buildForOS, copy to the output directory
+	if slices.Contains(buildForOS, "MacOS") {
+		srcDir := filepath.Join(projDir, "Builds", "MacOSX", buildType) //check if this is correct
+		copyDirectory(srcDir, filepath.Join(contentDir, "MacOS", buildType))
+	}
+
 	for _, os := range buildForOS {
+		//skip MacOS since it is already copied above
+		if os == "MacOS" {continue}
+
 		for _, format := range filteredFormats {
 			srcDir := filepath.Join(projDir, "build", os, buildType, proj.PluginName + "_artefacts", buildType, format)
 			dstDir := filepath.Join(contentDir, os, buildType, format)

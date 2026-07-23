@@ -22,7 +22,7 @@ func NewMacOSBuilder(jucePath, projectPath, pluginName, buildConfiguration strin
 	projucerPath, err := utils.CheckIfProjucerIsAlreadyBuilt(jucePath)
 	if err != nil {return nil, err}
 
-	err = utils.ResaveProject(projectPath, projucerPath, pluginName, pluginFormats)
+	err = utils.ResaveProject(projectPath, projucerPath, pluginFormats)
 	if err != nil {return nil, err}
 	
 	xcodeProjectPath := filepath.Join(projectPath, "Builds", "MacOSX", pluginName+".xcodeproj")

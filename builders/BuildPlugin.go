@@ -109,6 +109,7 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 	if cleanBuild {
 		err = os.RemoveAll(filepath.Join(projDir, "build"))
 		if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while cleaning build directory: %w", err)}
+
 	}
 
 	if len(pluginFormats) == 1 && pluginFormats[0] == "AAX" {

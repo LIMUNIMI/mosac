@@ -51,10 +51,12 @@ func buildProjucer(juceDir string) (error) {
 	return nil
 }
 
-
-// resaves the Jucer project using --resave
-func ResaveProject(projectPath, projucerPath, pluginName string, pluginFormats []string) error {
-	jucerFilePath := filepath.Join(projectPath, pluginName+".jucer")
+// resaves the unique Jucer project in projectPath using --resave
+func ResaveProject(projectPath, projucerPath string, pluginFormats []string) error {
+	jucerFilePath, err := getJucerFilePath(projectPath)
+	if err != nil {
+		return fmt.Errorf("[Mosac] Error occurred while resolving Jucer project file: %w", err)
+	}
 	projucerFormats := make([]string, len(pluginFormats))
 	copy(projucerFormats, pluginFormats)
 

@@ -52,7 +52,7 @@ func buildProjucer(juceDir string) (error) {
 }
 
 // resaves the unique Jucer project in projectPath using --resave
-func ResaveProject(projectPath, projucerPath string, pluginFormats []string) error {
+func ResaveProject(projectPath, projucerPath string, pluginFormats []string, skipAAX bool) error {
 	jucerFilePath, err := getJucerFilePath(projectPath)
 	if err != nil {
 		return fmt.Errorf("[Mosac] Error occurred while resolving Jucer project file: %w", err)
@@ -74,6 +74,7 @@ func ResaveProject(projectPath, projucerPath string, pluginFormats []string) err
 		case "Unity":
 			projucerFormats[i] = "buildUnity"
 		case "AAX":
+			if skipAAX {fmt.Println("[Mosac] AAX format is only supported on MacOS (JUCE8 or newer).");continue}
 			projucerFormats[i] = "buildAAX"
 		default:
 			return fmt.Errorf("[Mosac] Invalid plugin format: %s", format)

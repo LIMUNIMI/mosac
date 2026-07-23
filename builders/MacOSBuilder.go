@@ -2,9 +2,11 @@ package builders
 
 import (
 	"fmt"
+	"regexp"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 
 	"mosac/utils"
 )
@@ -18,13 +20,29 @@ type MacOSBuilder struct {
 }
 
 
+
+func checkIfJUCEVersionIsLessThan8(jucePath string) bool {
+	re := regexp.MustCompile(`JUCE-?([0-9]+)`)
+	matches := re.FindStringSubmatch(jucePath)
+	if len(matches) != 2 {return false}
+
+	version, err := strconv.Atoi(matches[1])
+	if err != nil {return false}
+
+	return version <= 7
+}
+
+
+
 func NewMacOSBuilder(jucePath, projectPath, pluginName, buildConfiguration string, pluginFormats []string) (*MacOSBuilder, error) {
 	projucerPath, err := utils.CheckIfProjucerIsAlreadyBuilt(jucePath)
 	if err != nil {return nil, err}
 
-	err = utils.ResaveProject(projectPath, projucerPath, pluginFormats)
+	skipAAX := checkIfJUCEVersionIsLessThan8(jucePath)
+
+	err = utils.ResaveProject(projectPath, projucerPath, pluginFormats, skipAAX)
 	if err != nil {return nil, err}
-	
+
 	xcodeProjectPath := filepath.Join(projectPath, "Builds", "MacOSX", pluginName+".xcodeproj")
 
 	return &MacOSBuilder{

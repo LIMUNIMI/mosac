@@ -41,7 +41,95 @@ func getJucerFilePath(ProjectPath string) (string, error) {
 	return absPath, nil
 }
 
-
+func normalizeRawJucerProject(raw *RawJucerProject, pluginFormats []string) {
+	if raw.Name == nil {
+		defaultName := "MOSAC"
+		raw.Name = &defaultName
+	}
+	if raw.Version == nil {
+		defaultVersion := "1.0.0"
+		raw.Version = &defaultVersion
+	}
+	if raw.CompanyName == nil {
+		defaultCompanyName := "Laboratorio di Informatica Musicale"
+		raw.CompanyName = &defaultCompanyName
+	}
+	if raw.PluginManufacturerCode == nil {
+		defaultPluginManufacturerCode := "LIM!"
+		raw.PluginManufacturerCode = &defaultPluginManufacturerCode
+	}
+	if raw.PluginManufacturer == nil {
+		defaultPluginManufacturer := "LIM"
+		raw.PluginManufacturer = &defaultPluginManufacturer
+	}
+	if raw.PluginCode == nil {
+		defaultPluginCode := "Lim0"
+		if raw.ID != nil {
+			defaultPluginCode = getPluginCodeFromUID(*raw.ID)
+		}
+		raw.PluginCode = &defaultPluginCode
+	}
+	if raw.PluginDesc == nil {
+		defaultPluginDesc := "insert here italian plugin description"
+		raw.PluginDesc = &defaultPluginDesc
+	}
+	if raw.PluginName == nil {
+		defaultPluginName := getString(raw.Name, "MOSAC")
+		raw.PluginName = &defaultPluginName
+	}
+	if raw.CompanyEmail == nil {
+		defaultCompanyEmail := "lim@di.unimi.it"
+		raw.CompanyEmail = &defaultCompanyEmail
+	}
+	if raw.CompanyWebsite == nil {
+		defaultCompanyWebsite := "https://www.lim.di.unimi.it/"
+		raw.CompanyWebsite = &defaultCompanyWebsite
+	} else {
+		companyWebsite := strings.TrimSpace(*raw.CompanyWebsite)
+		if companyWebsite != "" && !strings.HasPrefix(companyWebsite, "https://") {
+			companyWebsite = strings.TrimPrefix(companyWebsite, "http://")
+			companyWebsite = strings.TrimPrefix(companyWebsite, "https://")
+			companyWebsite = "https://" + companyWebsite
+		}
+		raw.CompanyWebsite = &companyWebsite
+	}
+	if raw.CompanyCopyright == nil {
+		defaultCompanyCopyright := getString(raw.CompanyEmail, "lim@di.unimi.it")
+		raw.CompanyCopyright = &defaultCompanyCopyright
+	}
+	if raw.BinaryDataNamespace == nil {
+		defaultBinaryDataNamespace := "BinaryData"
+		raw.BinaryDataNamespace = &defaultBinaryDataNamespace
+	}
+	if raw.IncludeBinaryInJuceHeader == nil {
+		defaultIncludeBinaryInJuceHeader := 1
+		raw.IncludeBinaryInJuceHeader = &defaultIncludeBinaryInJuceHeader
+	}
+	if raw.PluginVST3Category == nil {
+		defaultPluginVST3Category := "Fx"
+		raw.PluginVST3Category = &defaultPluginVST3Category
+	}
+	if raw.PluginAAXCategory == nil {
+		defaultPluginAAXCategory := "0"
+		raw.PluginAAXCategory = &defaultPluginAAXCategory
+	}
+	if raw.PluginAUMainType == nil {
+		defaultPluginAUMainType := "'aufx'"
+		raw.PluginAUMainType = &defaultPluginAUMainType
+	}
+	if raw.PluginCharacteristicsValue == nil {
+		defaultPluginCharacteristicsValue := ""
+		raw.PluginCharacteristicsValue = &defaultPluginCharacteristicsValue
+	}
+	if raw.Defines == nil {
+		defaultDefines := ""
+		raw.Defines = &defaultDefines
+	}
+	if raw.PluginFormats == nil && len(pluginFormats) == 0 {
+		defaultPluginFormats := "buildStandalone,buildVST3,buildAU,buildLV2,buildUnity"
+		raw.PluginFormats = &defaultPluginFormats
+	}
+}
 
 func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginProject, err error) {
 	var raw RawJucerProject
@@ -55,6 +143,7 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 	if err := decoder.Decode(&raw); err != nil {
 		return nil, fmt.Errorf("[Jucer2Cmake] Error while parsing XML: %w", err)
 	}
+	normalizeRawJucerProject(&raw, pluginFormats)
 
 	proj = &PluginProject{}
 
@@ -64,7 +153,9 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 	proj.CompanyName = getString(raw.CompanyName, "Laboratorio di Informatica Musicale")
 	proj.PluginManufacturerCode = getString(raw.PluginManufacturerCode, "LIM!")
 	proj.PluginManufacturer = getString(raw.PluginManufacturer, "LIM")
-	proj.PluginCode = getString(raw.PluginCode, getPluginCodeFromUID(*raw.ID))
+	pluginCode := getString(raw.PluginCode, "Lim0")
+	if pluginCode == "Lim0" && raw.ID != nil {pluginCode = getPluginCodeFromUID(*raw.ID)}
+	proj.PluginCode = pluginCode
 	proj.PluginDesc = getString(raw.PluginDesc, "insert here italian plugin description")
 	proj.PluginName = getString(raw.PluginName, proj.Name)
 	proj.CompanyEmail = getString(raw.CompanyEmail, "lim@di.unimi.it")

@@ -1,11 +1,14 @@
 package utils
 
 import (
+	"bytes"
+	"encoding/xml"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -58,6 +61,9 @@ func ResaveProject(projectPath, jucePath, projucerPath string, pluginFormats []s
 		return fmt.Errorf("[Mosac] Error occurred while resolving Jucer project file: %w", err)
 	}
 
+	err = updateJucerFallbackMetadata(jucerFilePath)
+	if err != nil {return fmt.Errorf("[Mosac] Error occurred while normalizing Jucer metadata: %w", err)}
+
 	err = updateJucerModulePaths(jucerFilePath, projectPath, jucePath)
 	if err != nil {return fmt.Errorf("[Mosac] Error occurred while updating Jucer module paths: %w", err)}
 
@@ -101,13 +107,95 @@ func ResaveProject(projectPath, jucePath, projucerPath string, pluginFormats []s
 	cmd.Stderr = os.Stderr
 
 	fmt.Printf("[Mosac] Resaving Jucer project: %s\n", jucerFilePath)
-	
+
 	err = cmd.Run()
 	if err != nil {return fmt.Errorf("[Mosac] Error occurred while resaving Jucer project: %w", err)}
 	return nil
 }
 
 
+func updateJucerFallbackMetadata(jucerFilePath string) error {
+	file, err := os.Open(jucerFilePath)
+	if err != nil {return fmt.Errorf("[Mosac] Error occurred while opening Jucer project file: %w", err)}
+	defer file.Close()
+
+	var raw RawJucerProject
+	if err := xml.NewDecoder(file).Decode(&raw); err != nil {return fmt.Errorf("[Mosac] Error occurred while parsing Jucer project file: %w", err)}
+
+	normalizeRawJucerProject(&raw, nil)
+
+	content, err := os.ReadFile(jucerFilePath)
+	if err != nil {return fmt.Errorf("[Mosac] Error occurred while reading Jucer project file: %w", err)}
+
+	attrs := map[string]string{
+		"name":                       getString(raw.Name, "MOSAC"),
+		"version":                    getString(raw.Version, "1.0.0"),
+		"companyName":                getString(raw.CompanyName, "Laboratorio di Informatica Musicale"),
+		"pluginManufacturerCode":     getString(raw.PluginManufacturerCode, "LIM!"),
+		"pluginManufacturer":         getString(raw.PluginManufacturer, "LIM"),
+		"pluginCode":                 getNormalizedPluginCode(raw),
+		"pluginDesc":                 getString(raw.PluginDesc, "insert here italian plugin description"),
+		"pluginName":                 getString(raw.PluginName, getString(raw.Name, "MOSAC")),
+		"companyEmail":               getString(raw.CompanyEmail, "lim@di.unimi.it"),
+		"companyWebsite":             getString(raw.CompanyWebsite, "https://www.lim.di.unimi.it/"),
+		"companyCopyright":           getString(raw.CompanyCopyright, getString(raw.CompanyEmail, "lim@di.unimi.it")),
+		"binaryDataNamespace":        getString(raw.BinaryDataNamespace, "BinaryData"),
+		"includeBinaryInJuceHeader":  strconv.Itoa(getInt(raw.IncludeBinaryInJuceHeader, 1)),
+		"pluginVST3Category":         getString(raw.PluginVST3Category, "Fx"),
+		"pluginAAXCategory":          getString(raw.PluginAAXCategory, "0"),
+		"pluginAUMainType":           getString(raw.PluginAUMainType, "'aufx'"),
+		"pluginCharacteristicsValue": getString(raw.PluginCharacteristicsValue, ""),
+		"defines":                    getString(raw.Defines, ""),
+		"pluginFormats":              getString(raw.PluginFormats, "buildStandalone,buildVST3,buildAU,buildLV2,buildUnity"),
+	}
+
+	newContent := string(content)
+	for attr, value := range attrs {
+		newContent, err = replaceRootXMLAttribute(newContent, attr, value)
+		if err != nil {return err}
+	}
+
+	if newContent == string(content) {return nil}
+
+	if err = os.WriteFile(jucerFilePath, []byte(newContent), 0o644); err != nil {return fmt.Errorf("[Mosac] Error occurred while writing Jucer project file: %w", err)}
+
+	return nil
+}
+
+func replaceRootXMLAttribute(content, attr, value string) (string, error) {
+	start := strings.Index(content, "<JUCERPROJECT")
+	if start == -1 {return content, nil}
+
+	end := strings.Index(content[start:], ">")
+	if end == -1 {return "", fmt.Errorf("[Mosac] malformed Jucer project file: missing closing tag for JUCERPROJECT")}
+
+	openingTag := content[start : start+end+1]
+	attrRegex := regexp.MustCompile(attr + `\s*=\s*"[^"]*"`)
+	escapedValue := escapeXMLAttribute(value)
+	updatedTag := openingTag
+
+	if attrRegex.MatchString(openingTag) {
+		updatedTag = attrRegex.ReplaceAllString(openingTag, attr+`="`+escapedValue+`"`)
+	} else {
+		updatedTag = strings.TrimSuffix(openingTag, ">") + " " + attr + `="` + escapedValue + `">`
+	}
+
+	if updatedTag == openingTag {return content, nil}
+
+	return content[:start] + updatedTag + content[start+end+1:], nil
+}
+
+func escapeXMLAttribute(value string) string {
+	var buf bytes.Buffer
+	_ = xml.EscapeText(&buf, []byte(value))
+	return buf.String()
+}
+
+func getNormalizedPluginCode(raw RawJucerProject) string {
+	pluginCode := getString(raw.PluginCode, "Lim0")
+	if pluginCode == "Lim0" && raw.ID != nil {pluginCode = getPluginCodeFromUID(*raw.ID)}
+	return pluginCode
+}
 
 func updateJucerModulePaths(jucerFilePath, projectPath, jucePath string) error {
 	file, err := os.ReadFile(jucerFilePath)

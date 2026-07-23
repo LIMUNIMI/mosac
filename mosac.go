@@ -19,7 +19,7 @@ var (
 	buildForOS = flag.String("sys", "MacOS,Linux,Windows", "Comma-separated list of targeted OS to build for.")
 	pluginFormats = flag.String("formats", "Standalone,LV2,VST3,AU,Unity,AAX", "Comma-separated list of plugin formats to build.")
 
-	initialize = flag.Bool("initialize", false, "Builds required Docker images and stop the program.")
+	initialize = flag.Bool("initialize", false, "Builds required Docker images, builds Projucer (for every JUCE submodule) and stops the program.")
 	batchPath = flag.String("batch", "", "Path to a batch file containing multiple build commands.\nSee README.md for more information on the batch file format.")
 	showWarnings = flag.Bool("w", false, "Shows warnings for projects with facultative blank fields [skips the build].")
 	cleanBuild = flag.Bool("clean", false, "Cleans the /build directory before building the plugin.")
@@ -55,6 +55,7 @@ func main() {
 		batchPath, err := filepath.Abs(*batchPath)
 		if err != nil {fmt.Printf("[MOSAC] Error occurred while resolving batch file path: %v\n", err); return}
 
+		if *outputDir == "" {fmt.Printf("[MOSAC] Output path not specified.\n\n\tUsage: go run mosac.go -batch path/to/batch.csv -OP path/to/outputDir\n\n");return}
 		outputDir, err := filepath.Abs(*outputDir)
 		if err != nil {fmt.Printf("[MOSAC] Error occurred while resolving output directory path: %v\n", err); return}
 

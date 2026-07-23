@@ -67,7 +67,7 @@ go mod tidy
 4) Once the Go project is set run:
 ```
 go build mosac.go
-./mosac -img
+./mosac -initialize
 ```
 5) Compile a JUCE plugin:
 ```
@@ -111,3 +111,4 @@ When present, this file also supplies the metadata written in the final JSON out
 - Please note that all the artefacts compiled by this script are **not signed**.
 - **AAX** formats does not work for Windows due to cross-compilation issues. Additionalliy on MacOS it can only be used in Pro Tools Developer, if you want to use it in regular Pro Tools you must send a "plugin-signing" email to Avid.
 - Please ensure that all file names and `#include` paths strictly follow **case-sensitive** naming conventions. While Windows is case-insensitive, the Linux environment is not. Correct casing is essential to avoid compilation errors during cross-platform builds.
+- Different approach for **MacOS build**: the Projucer built into the submodules of the specified JUCE version generates an xcodeproj. The plugin build can't be done using CMake because of deprecated functions in `juceaide`.

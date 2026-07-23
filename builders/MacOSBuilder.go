@@ -40,7 +40,7 @@ func NewMacOSBuilder(jucePath, projectPath, pluginName, buildConfiguration strin
 
 	skipAAX := checkIfJUCEVersionIsLessThan8(jucePath)
 
-	err = utils.ResaveProject(projectPath, projucerPath, pluginFormats, skipAAX)
+	err = utils.ResaveProject(projectPath, jucePath, projucerPath, pluginFormats, skipAAX)
 	if err != nil {return nil, err}
 
 	xcodeProjectPath := filepath.Join(projectPath, "Builds", "MacOSX", pluginName+".xcodeproj")

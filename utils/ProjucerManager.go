@@ -52,11 +52,15 @@ func buildProjucer(juceDir string) (error) {
 }
 
 // resaves the unique Jucer project in projectPath using --resave
-func ResaveProject(projectPath, projucerPath string, pluginFormats []string, skipAAX bool) error {
+func ResaveProject(projectPath, jucePath, projucerPath string, pluginFormats []string, skipAAX bool) error {
 	jucerFilePath, err := getJucerFilePath(projectPath)
 	if err != nil {
 		return fmt.Errorf("[Mosac] Error occurred while resolving Jucer project file: %w", err)
 	}
+
+	err = updateJucerModulePaths(jucerFilePath, projectPath, jucePath)
+	if err != nil {return fmt.Errorf("[Mosac] Error occurred while updating Jucer module paths: %w", err)}
+
 	projucerFormats := make([]string, len(pluginFormats))
 	copy(projucerFormats, pluginFormats)
 
@@ -100,5 +104,53 @@ func ResaveProject(projectPath, projucerPath string, pluginFormats []string, ski
 	
 	err = cmd.Run()
 	if err != nil {return fmt.Errorf("[Mosac] Error occurred while resaving Jucer project: %w", err)}
+	return nil
+}
+
+
+
+func updateJucerModulePaths(jucerFilePath, projectPath, jucePath string) error {
+	file, err := os.ReadFile(jucerFilePath)
+	if err != nil {return fmt.Errorf("[Mosac] Error occurred while reading Jucer project file: %w", err)}
+
+	modulesPath, err := filepath.Rel(projectPath, filepath.Join(jucePath, "modules"))
+	if err != nil {return fmt.Errorf("[Mosac] Error occurred while resolving JUCE modules path: %w", err)}
+	buildToolsPath, err := filepath.Rel(projectPath, filepath.Join(jucePath, "extras", "Build"))
+	if err != nil {return fmt.Errorf("[Mosac] Error occurred while resolving JUCE build tools path: %w", err)}
+
+	modulesPath = filepath.ToSlash(modulesPath)
+	buildToolsPath = filepath.ToSlash(buildToolsPath)
+
+	lines := strings.Split(string(file), "\n")
+	modified := false
+
+	for i, line := range lines {
+		if !strings.Contains(line, "<MODULEPATH") || !strings.Contains(line, `id="juce_`) {
+			continue
+		}
+
+		if strings.Contains(line, `id="juce_build_tools"`) {
+			re := regexp.MustCompile(`path="[^"]*"`)
+			updated := re.ReplaceAllString(line, `path="`+buildToolsPath+`"`)
+			if updated != line {
+				lines[i] = updated
+				modified = true
+			}
+			continue
+		}
+
+		re := regexp.MustCompile(`path="[^"]*"`)
+		updated := re.ReplaceAllString(line, `path="`+modulesPath+`"`)
+		if updated != line {
+			lines[i] = updated
+			modified = true
+		}
+	}
+
+	if !modified {return nil}
+
+	newContent := strings.Join(lines, "\n")
+	if err = os.WriteFile(jucerFilePath, []byte(newContent), 0o644); err != nil {return fmt.Errorf("[Mosac] Error occurred while writing Jucer project file: %w", err)}
+
 	return nil
 }

@@ -146,7 +146,7 @@ func OrganizeOutput(proj *PluginProject, config *MosacConfig, projDir, outputDir
 
 	// if macOS is in buildForOS, copy to the output directory
 	if slices.Contains(buildForOS, "MacOS") {
-		srcDir := filepath.Join(projDir, "Builds", "MacOSX", buildType) //check if this is correct
+		srcDir := filepath.Join(projDir, "Builds", "MacOSX", "build", buildType) //check if this is correct
 		copyDirectory(srcDir, filepath.Join(contentDir, "MacOS", buildType))
 	}
 
@@ -177,6 +177,9 @@ func OrganizeOutput(proj *PluginProject, config *MosacConfig, projDir, outputDir
 		filepath.Join(contentDir, "Windows", buildType,"VST3", fmt.Sprintf("%s.lib", proj.PluginName)),
 		filepath.Join(contentDir, "Windows", buildType,"VST3", fmt.Sprintf("%s.vst3", proj.PluginName), "Contents", "x86_64-win", fmt.Sprintf("%s.vst3.manifest", proj.PluginName)),
 		filepath.Join(contentDir, "Windows", buildType,"Unity", fmt.Sprintf("%s.dll.manifest", proj.PluginName)),
+		filepath.Join(contentDir, "MacOS", buildType, "juce_lv2_helper"),
+		filepath.Join(contentDir, "MacOS", buildType, "juce_vst3_helper"),
+		filepath.Join(contentDir, "MacOS", buildType, fmt.Sprintf("lib%s.a", proj.PluginName)),
 	)
 	
 	// remove manifest and .lib files that are not needed in the output directory (also removes AAX folder if it exists)

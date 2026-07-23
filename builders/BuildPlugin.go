@@ -110,10 +110,12 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 		err = os.RemoveAll(filepath.Join(projDir, "build"))
 		if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while cleaning build directory: %w", err)}
 
+		err = os.RemoveAll(filepath.Join(projDir, "Builds", "MacOSX", "build"))
+		if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while cleaning MacOS build directory: %w", err)}
 	}
 
 	if len(pluginFormats) == 1 && pluginFormats[0] == "AAX" {
-		fmt.Println("[BuildPlugin] AAX format is only supported on MacOS. Linux and Windows builds will be skipped.")
+		fmt.Println("[BuildPlugin] AAX format is only supported on MacOS (JUCE8 or newer). Linux and Windows builds will be skipped.")
 		skipLinuxAndWin = true
 	}
 	

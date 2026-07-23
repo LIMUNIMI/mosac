@@ -64,6 +64,9 @@ func ResaveProject(projectPath, jucePath, projucerPath string, pluginFormats []s
 	err = updateJucerFallbackMetadata(jucerFilePath)
 	if err != nil {return fmt.Errorf("[Mosac] Error occurred while normalizing Jucer metadata: %w", err)}
 
+	err = updateJucerModuleUseGlobalPath(jucerFilePath)
+	if err != nil {return fmt.Errorf("[Mosac] Error occurred while updating Jucer module usage: %w", err)}
+
 	err = updateJucerModulePaths(jucerFilePath, projectPath, jucePath)
 	if err != nil {return fmt.Errorf("[Mosac] Error occurred while updating Jucer module paths: %w", err)}
 
@@ -195,6 +198,57 @@ func getNormalizedPluginCode(raw RawJucerProject) string {
 	pluginCode := getString(raw.PluginCode, "Lim0")
 	if pluginCode == "Lim0" && raw.ID != nil {pluginCode = getPluginCodeFromUID(*raw.ID)}
 	return pluginCode
+}
+
+func updateJucerModuleUseGlobalPath(jucerFilePath string) error {
+	content, err := os.ReadFile(jucerFilePath)
+	if err != nil {return fmt.Errorf("[Mosac] Error occurred while reading Jucer project file: %w", err)}
+
+	lines := strings.Split(string(content), "\n")
+	modified := false
+	re := regexp.MustCompile(`useGlobalPath="[^"]*"`)
+
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "<MODULE ") || !strings.Contains(line, `id="juce_`) {
+			continue
+		}
+
+		if strings.Contains(line, `useGlobalPath="0"`) {
+			continue
+		}
+
+		if re.MatchString(line) {
+			updated := re.ReplaceAllString(line, `useGlobalPath="0"`)
+			if updated != line {
+				lines[i] = updated
+				modified = true
+			}
+			continue
+		}
+
+		if strings.Contains(line, `/>`) {
+			updated := strings.Replace(line, `/>`, ` useGlobalPath="0"/>`, 1)
+			if updated != line {
+				lines[i] = updated
+				modified = true
+			}
+			continue
+		}
+
+		updated := strings.Replace(line, ">", ` useGlobalPath="0">`, 1)
+		if updated != line {
+			lines[i] = updated
+			modified = true
+		}
+	}
+
+	if !modified {return nil}
+
+	newContent := strings.Join(lines, "\n")
+	if err = os.WriteFile(jucerFilePath, []byte(newContent), 0o644); err != nil {return fmt.Errorf("[Mosac] Error occurred while writing Jucer project file: %w", err)}
+
+	return nil
 }
 
 func updateJucerModulePaths(jucerFilePath, projectPath, jucePath string) error {

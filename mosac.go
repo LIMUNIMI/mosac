@@ -62,7 +62,6 @@ func main() {
 		fmt.Printf("===== MOSAC - Batch Mode =====\nBatch file: %s\nOutput directory: %s\n==============================\n\n", batchPath, outputDir)
 
 		err = builders.BuildBatch(batchPath, outputDir, *showWarnings, *cleanBuild)
-		if err != nil {fmt.Println(err)}
 		
 		return
 	}

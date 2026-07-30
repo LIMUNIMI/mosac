@@ -1,7 +1,7 @@
 package builders
 
 import (
-	"errors"
+
 	"fmt"
 	"mosac/utils"
 	"os"
@@ -71,13 +71,13 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 	if len(pluginFormats) == 0 {return fmt.Errorf("[MOSAC] Please specify at least one plugin format.")}
 	if !containsValidArg(pluginFormats, validFormats) {return fmt.Errorf("[MOSAC] Please specify at least one valid plugin format (Standalone, LV2, VST3, AU, Unity, or AAX).")}
 
-	// make every path absolute
 	var (
 		err error
 		skipLinuxAndWin = false
 		successfulOS []string
 		buildErrors  []error
 	)
+
 	projDir, err = filepath.Abs(projDir)
 	if err != nil {return fmt.Errorf("[MOSAC] Error occurred while resolving project directory path: %w", err)}
 	outputDir, err = filepath.Abs(outputDir)
@@ -100,8 +100,8 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 	// create CMakeLists.txt from Jucer file
 	project, err := utils.Jucer2Cmake(projDir, pluginFormats)
 	if err != nil {
-		fmt.Println(err)
-		return fmt.Errorf("[BuildPlugin] Error occurred while parsing Jucer file: %w", err)
+		buildErrors = append(buildErrors, err)
+		goto End
 	}
 
 	if showWarnings {
@@ -163,8 +163,16 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 		if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while organizing output: %w", err)}
 	}
 
+End:
 	fmt.Println("--- END ---")
-	if len(buildErrors) > 0 {return errors.Join(buildErrors...)}
+	aux := ""
+	if len(buildErrors) > 0 {
+		fmt.Println("--- ERRORS ---")
+		for _, err := range buildErrors {aux += fmt.Sprintf("\t%v\n", err)}
+		fmt.Printf("\t%v\n", err)
+		fmt.Println()
+		return fmt.Errorf("%s", aux)
+	}
 
 	return nil
 }
@@ -198,7 +206,9 @@ func BuildBatch(batchPath, outputDir string, showWarnings, cleanBuild bool) erro
 		fmt.Printf("== %d° Plugin ==========\n", n+1)
 
 		err = BuildPlugin(projectPath, jucePath, outputDir, buildType, buildForOS, pluginFormats, showWarnings, cleanBuild)
-		if err != nil {buildErrors = append(buildErrors, fmt.Errorf("[Plugin %d] Error occurred while building %s:\n\t%w", n+1, projectPath[strings.LastIndex(projectPath, "/")+1:], err))}
+
+		// format single n° plugin error
+		if err != nil {buildErrors = append(buildErrors, fmt.Errorf("[Plugin %d] Error occurred while building %s:\n%w", n+1, projectPath[strings.LastIndex(projectPath, "/")+1:], err))}
 		n++
 	}
 
@@ -207,11 +217,10 @@ func BuildBatch(batchPath, outputDir string, showWarnings, cleanBuild bool) erro
 	fmt.Println("===== Finished Batch-Mode =====")
 
 	if len(buildErrors) > 0 {
-		fmt.Printf("\n\n--- ERRORS ---")
+		fmt.Printf("\n\n--- ERRORS ---\n")
 		for _, buildErr := range buildErrors {
-			fmt.Printf("\t%v\n", buildErr)
+			fmt.Printf("%v\n", buildErr)
 		}
-		return fmt.Errorf("[BuildBatch] Batch finished with errors.")
 	}
 
 	return nil

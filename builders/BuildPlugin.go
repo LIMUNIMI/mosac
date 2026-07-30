@@ -112,6 +112,9 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 
 		err = os.RemoveAll(filepath.Join(projDir, "Builds", "MacOSX", "build"))
 		if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while cleaning MacOS build directory: %w", err)}
+
+		err = os.RemoveAll(filepath.Join(projDir, "JuceLibraryCode"))
+		if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while cleaning JuceLibraryCode directory: %w", err)}
 	}
 
 	if len(pluginFormats) == 1 && pluginFormats[0] == "AAX" {

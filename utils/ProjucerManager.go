@@ -12,9 +12,12 @@ import (
 	"strings"
 )
 
+
+
 func projucerExecutablePath(projucerAppPath string) string {
 	return filepath.Join(projucerAppPath, "Contents", "MacOS", "Projucer")
 }
+
 
 // checks if Projucer is already built in the given JUCE directory. If not, it builds Projucer and returns its path.
 func CheckIfProjucerIsAlreadyBuilt(jucePath string) (string, error) {
@@ -54,12 +57,11 @@ func buildProjucer(juceDir string) (error) {
 	return nil
 }
 
+
 // resaves the unique Jucer project in projectPath using --resave
 func ResaveProject(projectPath, jucePath, projucerPath string, pluginFormats []string, skipAAX bool) error {
 	jucerFilePath, err := getJucerFilePath(projectPath)
-	if err != nil {
-		return fmt.Errorf("[Mosac] Error occurred while resolving Jucer project file: %w", err)
-	}
+	if err != nil {return fmt.Errorf("[Mosac] Error occurred while resolving Jucer project file: %w", err)}
 
 	err = updateJucerFallbackMetadata(jucerFilePath)
 	if err != nil {return fmt.Errorf("[Mosac] Error occurred while normalizing Jucer metadata: %w", err)}
@@ -117,6 +119,7 @@ func ResaveProject(projectPath, jucePath, projucerPath string, pluginFormats []s
 }
 
 
+
 func updateJucerFallbackMetadata(jucerFilePath string) error {
 	file, err := os.Open(jucerFilePath)
 	if err != nil {return fmt.Errorf("[Mosac] Error occurred while opening Jucer project file: %w", err)}
@@ -133,7 +136,7 @@ func updateJucerFallbackMetadata(jucerFilePath string) error {
 	attrs := map[string]string{
 		"name":                       getString(raw.Name, "MOSAC"),
 		"version":                    getString(raw.Version, "1.0.0"),
-		"companyName":                getString(raw.CompanyName, "Laboratorio di Informatica Musicale"),
+		"companyName":                getString(raw.CompanyName, "Laboratorio-di-Informatica-Musicale"),
 		"pluginManufacturerCode":     getString(raw.PluginManufacturerCode, "LIM!"),
 		"pluginManufacturer":         getString(raw.PluginManufacturer, "LIM"),
 		"pluginCode":                 getNormalizedPluginCode(raw),
@@ -165,6 +168,8 @@ func updateJucerFallbackMetadata(jucerFilePath string) error {
 	return nil
 }
 
+
+
 func replaceRootXMLAttribute(content, attr, value string) (string, error) {
 	start := strings.Index(content, "<JUCERPROJECT")
 	if start == -1 {return content, nil}
@@ -188,11 +193,15 @@ func replaceRootXMLAttribute(content, attr, value string) (string, error) {
 	return content[:start] + updatedTag + content[start+end+1:], nil
 }
 
+
+
 func escapeXMLAttribute(value string) string {
 	var buf bytes.Buffer
 	_ = xml.EscapeText(&buf, []byte(value))
 	return buf.String()
 }
+
+
 
 func getNormalizedPluginCode(raw RawJucerProject) string {
 	pluginCode := getString(raw.PluginCode, "Lim0")
@@ -200,46 +209,19 @@ func getNormalizedPluginCode(raw RawJucerProject) string {
 	return pluginCode
 }
 
+
+// changes the useGlobalPath attribute of all <MODULE> elements in the Jucer project file to "0" (false).
 func updateJucerModuleUseGlobalPath(jucerFilePath string) error {
 	content, err := os.ReadFile(jucerFilePath)
 	if err != nil {return fmt.Errorf("[Mosac] Error occurred while reading Jucer project file: %w", err)}
 
 	lines := strings.Split(string(content), "\n")
 	modified := false
-	re := regexp.MustCompile(`useGlobalPath="[^"]*"`)
-
+	
 	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if !strings.HasPrefix(trimmed, "<MODULE ") || !strings.Contains(line, `id="juce_`) {
-			continue
-		}
-
-		if strings.Contains(line, `useGlobalPath="0"`) {
-			continue
-		}
-
-		if re.MatchString(line) {
-			updated := re.ReplaceAllString(line, `useGlobalPath="0"`)
-			if updated != line {
-				lines[i] = updated
-				modified = true
-			}
-			continue
-		}
-
-		if strings.Contains(line, `/>`) {
-			updated := strings.Replace(line, `/>`, ` useGlobalPath="0"/>`, 1)
-			if updated != line {
-				lines[i] = updated
-				modified = true
-			}
-			continue
-		}
-
-		updated := strings.Replace(line, ">", ` useGlobalPath="0">`, 1)
-		if updated != line {
-			lines[i] = updated
+		if strings.Contains(line, `useGlobalPath="1"`) {
 			modified = true
+			lines[i] = strings.ReplaceAll(line, `useGlobalPath="1"`, `useGlobalPath="0"`)
 		}
 	}
 
@@ -251,6 +233,9 @@ func updateJucerModuleUseGlobalPath(jucerFilePath string) error {
 	return nil
 }
 
+
+// updates the paths of all <MODULEPATH> elements in the Jucer project file in order
+// to point to the specified jucePath modules.
 func updateJucerModulePaths(jucerFilePath, projectPath, jucePath string) error {
 	file, err := os.ReadFile(jucerFilePath)
 	if err != nil {return fmt.Errorf("[Mosac] Error occurred while reading Jucer project file: %w", err)}

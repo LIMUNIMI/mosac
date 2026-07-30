@@ -37,7 +37,7 @@ func NewLinuxBuilder(jucePath, projectPath, buildConfiguration string) (*LinuxBu
 					"-DCMAKE_SHARED_LINKER_FLAGS=\"-fuse-ld=gold -flto=auto\" "+
 					"-DCMAKE_MODULE_LINKER_FLAGS=\"-fuse-ld=gold -flto=auto\" "+
 					"-DJUCE_PATH=/opt -DPROJECT_DIR=/workspace && "+
-					"cmake --build /workspace/build/Linux/%[1]s",buildConfiguration,)},
+					"cmake --build /workspace/build/Linux/%[1]s -j $(nproc --ignore=1)",buildConfiguration,)},
 	}, nil
 }
 

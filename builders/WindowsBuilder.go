@@ -49,7 +49,7 @@ func NewWindowsBuilder(jucePath, projectPath, buildConfiguration string) (*Windo
 					"-DCMAKE_RC_COMPILER=llvm-rc "+
 					"-DCMAKE_C_FLAGS=\"$CL_FLAGS\" "+
 					"-DCMAKE_CXX_FLAGS=\"$CL_FLAGS\" && "+
-					"cmake --build /workspace/build/Windows/%[1]s",buildConfiguration)},
+					"cmake --build /workspace/build/Windows/%[1]s -j $(nproc --ignore=1)",buildConfiguration)},
 	}, nil
 }
 

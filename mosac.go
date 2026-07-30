@@ -74,5 +74,8 @@ func main() {
 	pluginFormats := strings.Split(*pluginFormats, ",")
 
 	err := builders.BuildPlugin(*projectDir, *juceDir, *outputDir, *buildType, buildForOS, pluginFormats, *showWarnings, *cleanBuild)
-	if err != nil {fmt.Println(err)}
+	if err != nil {
+		fmt.Printf("\n\n--- ERRORS ---\n")
+		fmt.Println(err)
+	}
 }

@@ -99,7 +99,10 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 
 	// create CMakeLists.txt from Jucer file
 	project, err := utils.Jucer2Cmake(projDir, pluginFormats)
-	if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while parsing Jucer file: %w", err)}
+	if err != nil {
+		fmt.Println(err)
+		return fmt.Errorf("[BuildPlugin] Error occurred while parsing Jucer file: %w", err)
+	}
 
 	if showWarnings {
 		err = printErrors(project)
@@ -204,7 +207,7 @@ func BuildBatch(batchPath, outputDir string, showWarnings, cleanBuild bool) erro
 	fmt.Println("===== Finished Batch-Mode =====")
 
 	if len(buildErrors) > 0 {
-		fmt.Println("[BuildBatch] The following errors occurred during the batch build:")
+		fmt.Printf("\n\n--- ERRORS ---")
 		for _, buildErr := range buildErrors {
 			fmt.Printf("\t%v\n", buildErr)
 		}

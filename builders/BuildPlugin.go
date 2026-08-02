@@ -87,11 +87,11 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 
 	if configFound {
 		juceDir, err = utils.ResolveJuceDirFromVersion(mosacConf.JuceVersion)
-		if err != nil {fmt.Printf("[BuildPlugin] Error occurred while resolving JUCE directory from mosac.conf: %w", err); return fmt.Errorf("[BuildPlugin] Error occurred while resolving JUCE directory from mosac.conf: %v\n", err)}
+		if err != nil {fmt.Printf("[BuildPlugin] Error occurred while resolving JUCE directory from mosac.conf: %v", err); return fmt.Errorf("[BuildPlugin] Error occurred while resolving JUCE directory from mosac.conf: %v\n", err)}
 	} else {
 		if juceDir == "" {fmt.Printf("[MOSAC] Please provide the JUCE directory with -JP or add a mosac.conf file in the project directory."); return fmt.Errorf("[MOSAC] Please provide the JUCE directory with -JP or add a mosac.conf file in the project directory.\n")}
 		juceDir, err = filepath.Abs(juceDir)
-		if err != nil {fmt.Printf("[MOSAC] Error occurred while resolving JUCE directory path: %v\n", err); return fmt.Errorf("[MOSAC] Error occurred while resolving JUCE directory path: %w", err)}
+		if err != nil {fmt.Printf("[MOSAC] Error occurred while resolving JUCE directory path: %v\n", err); return fmt.Errorf("[MOSAC] Error occurred while resolving JUCE directory path: %v", err)}
 	}
 
 	fmt.Printf("Building project at: %s\nSelected JUCE directory: %s\nOutput directory: %s\nBuild type: %s\nTarget OS: %v\nPlugin formats: %v\n\n--- START ---\n", projDir, juceDir, outputDir, buildType, buildForOS, pluginFormats)

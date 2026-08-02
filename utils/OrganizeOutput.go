@@ -125,15 +125,35 @@ func writeInfoToJson(proj *PluginProject, config *MosacConfig, outputDir string,
 
 
 
-// organizes the output of the plugin build process by copying the relevant files to a structured output directory and creating a JSON metadata file.
-func OrganizeOutput(proj *PluginProject, config *MosacConfig, projDir, outputDir, buildType string, buildForOS, pluginFormats []string) error {
+// copies the builded pluginFormats to the outputDir and creates a JSON metadata file.
+//if copyAll parameter is set to true, every plugin format of every OS gets copied regardless of the output code.
+func OrganizeOutput(proj *PluginProject, config *MosacConfig, projDir, outputDir, buildType string, buildForOS, pluginFormats []string, copyAll bool) error {
 	contentDir := filepath.Join(outputDir, proj.PluginName)
 	var (
 		err error
 		toBeRemoved []string
 	)
-
+	
+	if err = os.MkdirAll(contentDir, os.ModePerm); err != nil {return fmt.Errorf("[Output] Error occurred while creating output directory: %w", err)}
 	filteredFormats := make([]string, 0, len(pluginFormats))
+
+	if copyAll {
+		// copies Builds/MacOSX folder to outputDir/pluginName/MacOS
+		macDir := filepath.Join(projDir, "Builds", "MacOSX", "build", buildType)
+		copyDirectory(macDir, filepath.Join(contentDir, "MacOS", buildType))
+
+		// copies build/Linux folder to outputDir/pluginName/Linux
+		linuxDir := filepath.Join(projDir, "build", "Linux", buildType, proj.PluginName + "_artefacts", buildType)
+		copyDirectory(linuxDir, filepath.Join(contentDir, "Linux", buildType))
+
+		// copies build/Windows folder to outputDir/pluginName/Windows
+		winDir := filepath.Join(projDir, "build", "Windows", buildType, proj.PluginName + "_artefacts", buildType)
+		copyDirectory(winDir, filepath.Join(contentDir, "Windows", buildType))
+
+		goto Final
+	}
+
+
 	if !slices.Contains(buildForOS, "MacOS") && slices.Contains(pluginFormats, "AU") {
 		for _, f := range pluginFormats {
 			if f != "AU" {filteredFormats = append(filteredFormats, f)}
@@ -141,8 +161,6 @@ func OrganizeOutput(proj *PluginProject, config *MosacConfig, projDir, outputDir
 	} else {
 		filteredFormats = pluginFormats
 	}
-
-	if err = os.MkdirAll(contentDir, os.ModePerm); err != nil {return fmt.Errorf("[Output] Error occurred while creating output directory: %w", err)}
 
 	// if macOS is in buildForOS, copy to the output directory
 	if slices.Contains(buildForOS, "MacOS") {
@@ -162,6 +180,8 @@ func OrganizeOutput(proj *PluginProject, config *MosacConfig, projDir, outputDir
 		}
 	}
 
+// final stage (cleaning and copying default directories)
+Final:
 	// if "Presets" and "Installers" folder exists in the project directory, copy them to the output directory
 	if info, err := os.Stat(filepath.Join(projDir, "Presets")); err == nil && info.IsDir() {
 		copyDirectory(filepath.Join(projDir, "Presets"), filepath.Join(contentDir, "Presets"))
@@ -180,6 +200,9 @@ func OrganizeOutput(proj *PluginProject, config *MosacConfig, projDir, outputDir
 		filepath.Join(contentDir, "MacOS", buildType, "juce_lv2_helper"),
 		filepath.Join(contentDir, "MacOS", buildType, "juce_vst3_helper"),
 		filepath.Join(contentDir, "MacOS", buildType, fmt.Sprintf("lib%s.a", proj.PluginName)),
+
+		filepath.Join(contentDir, "Linux", buildType, fmt.Sprintf("lib%s_SharedCode.a", proj.PluginName)),
+		filepath.Join(contentDir, "Windows", buildType, fmt.Sprintf("%s_SharedCode.lib", proj.PluginName)),
 	)
 	
 	// remove manifest and .lib files that are not needed in the output directory (also removes AAX folder if it exists)

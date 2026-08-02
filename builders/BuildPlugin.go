@@ -1,7 +1,6 @@
 package builders
 
 import (
-
 	"fmt"
 	"mosac/utils"
 	"os"
@@ -63,13 +62,13 @@ func printErrors(proj *utils.PluginProject) (error) {
 
 
 // builds the plugin project for the specified OS and plugin formats
-func BuildPlugin(projDir string, juceDir string, outputDir string, buildType string, buildForOS, pluginFormats []string, showWarnings, cleanBuild bool) error {
-	if projDir == "" || outputDir == "" {return fmt.Errorf("[MOSAC] Please provide the required paths for the JUCE project and output directory.")}
-	if buildType != "Debug" && buildType != "Release" {return fmt.Errorf("[MOSAC] Invalid build type. Please specify either 'Debug' or 'Release'.")}
-	if len(buildForOS) == 0 {return fmt.Errorf("[MOSAC] Please specify at least one target OS.")}
-	if !containsValidArg(buildForOS, validOS) {return fmt.Errorf("[MOSAC] Please specify at least one valid OS (MacOS, Linux, or Windows).")}
-	if len(pluginFormats) == 0 {return fmt.Errorf("[MOSAC] Please specify at least one plugin format.")}
-	if !containsValidArg(pluginFormats, validFormats) {return fmt.Errorf("[MOSAC] Please specify at least one valid plugin format (Standalone, LV2, VST3, AU, Unity, or AAX).")}
+func BuildPlugin(projDir string, juceDir string, outputDir string, buildType string, buildForOS, pluginFormats []string, showWarnings, cleanBuild, copyAll bool) error {
+	if projDir == "" || outputDir == "" {fmt.Println("[MOSAC] Please provide the required paths for the JUCE project and output directory."); return fmt.Errorf("[MOSAC] Please provide the required paths for the JUCE project and output directory.")}
+	if buildType != "Debug" && buildType != "Release" {fmt.Println("[MOSAC] Invalid build type. Please specify either 'Debug' or 'Release'."); return fmt.Errorf("[MOSAC] Invalid build type. Please specify either 'Debug' or 'Release'.")}
+	if len(buildForOS) == 0 {fmt.Println("[MOSAC] Please specify at least one target OS."); return fmt.Errorf("[MOSAC] Please specify at least one target OS.")}
+	if !containsValidArg(buildForOS, validOS) {fmt.Println("[MOSAC] Please specify at least one valid OS (MacOS, Linux, or Windows)."); return fmt.Errorf("[MOSAC] Please specify at least one valid OS (MacOS, Linux, or Windows).")}
+	if len(pluginFormats) == 0 {fmt.Println("[MOSAC] Please specify at least one plugin format."); return fmt.Errorf("[MOSAC] Please specify at least one plugin format.")}
+	if !containsValidArg(pluginFormats, validFormats) {fmt.Println("[MOSAC] Please specify at least one valid plugin format (Standalone, LV2, VST3, AU, Unity, or AAX)."); return fmt.Errorf("[MOSAC] Please specify at least one valid plugin format (Standalone, LV2, VST3, AU, Unity, or AAX).")}
 
 	var (
 		err error
@@ -79,20 +78,20 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 	)
 
 	projDir, err = filepath.Abs(projDir)
-	if err != nil {return fmt.Errorf("[MOSAC] Error occurred while resolving project directory path: %w", err)}
+	if err != nil {fmt.Printf("[MOSAC] Error occurred while resolving project directory path: %v", err); return err}
 	outputDir, err = filepath.Abs(outputDir)
-	if err != nil {return fmt.Errorf("[MOSAC] Error occurred while resolving output directory path: %w", err)}
+	if err != nil {fmt.Printf("[MOSAC] Error occurred while resolving output directory path: %v\n", err); return err}
 
 	mosacConf, configFound, err := utils.LoadMosacConfig(projDir)
-	if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while reading mosac.conf: %w", err)}
+	if err != nil {fmt.Printf("[BuildPlugin] Error occurred while reading mosac.conf: %v\n", err); return err}
 
 	if configFound {
 		juceDir, err = utils.ResolveJuceDirFromVersion(mosacConf.JuceVersion)
-		if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while resolving JUCE directory from mosac.conf: %w", err)}
+		if err != nil {fmt.Printf("[BuildPlugin] Error occurred while resolving JUCE directory from mosac.conf: %w", err); return fmt.Errorf("[BuildPlugin] Error occurred while resolving JUCE directory from mosac.conf: %v\n", err)}
 	} else {
-		if juceDir == "" {return fmt.Errorf("[MOSAC] Please provide the JUCE directory with -JP or add a mosac.conf file in the project directory.")}
+		if juceDir == "" {fmt.Printf("[MOSAC] Please provide the JUCE directory with -JP or add a mosac.conf file in the project directory."); return fmt.Errorf("[MOSAC] Please provide the JUCE directory with -JP or add a mosac.conf file in the project directory.\n")}
 		juceDir, err = filepath.Abs(juceDir)
-		if err != nil {return fmt.Errorf("[MOSAC] Error occurred while resolving JUCE directory path: %w", err)}
+		if err != nil {fmt.Printf("[MOSAC] Error occurred while resolving JUCE directory path: %v\n", err); return fmt.Errorf("[MOSAC] Error occurred while resolving JUCE directory path: %w", err)}
 	}
 
 	fmt.Printf("Building project at: %s\nSelected JUCE directory: %s\nOutput directory: %s\nBuild type: %s\nTarget OS: %v\nPlugin formats: %v\n\n--- START ---\n", projDir, juceDir, outputDir, buildType, buildForOS, pluginFormats)
@@ -159,19 +158,22 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 	}
 
 	if len(successfulOS) > 0 {
-		err = utils.OrganizeOutput(project, mosacConf, projDir, outputDir, buildType, successfulOS, pluginFormats)
+		err = utils.OrganizeOutput(project, mosacConf, projDir, outputDir, buildType, successfulOS, pluginFormats, copyAll)
 		if err != nil {return fmt.Errorf("[BuildPlugin] Error occurred while organizing output: %w", err)}
 	}
 
 End:
-	fmt.Println("--- END ---")
 	aux := ""
+
+	fmt.Println("--- END ---")
 	if len(buildErrors) > 0 {
 		fmt.Println("--- ERRORS ---")
-		for _, err := range buildErrors {aux += fmt.Sprintf("\t%v\n", err)}
-		fmt.Printf("\t%v\n", err)
+		for _, buildErr := range buildErrors {
+			fmt.Printf("\t%v\n", buildErr)
+			aux += fmt.Sprintf("\t%v\n", buildErr)
+		}
 		fmt.Println()
-		return fmt.Errorf("%s", aux)
+		return fmt.Errorf("%s\n", aux)
 	}
 
 	return nil
@@ -179,7 +181,7 @@ End:
 
 
 // builds multiple plugin projects specified in a batch file
-func BuildBatch(batchPath, outputDir string, showWarnings, cleanBuild bool) error {
+func BuildBatch(batchPath, outputDir string, showWarnings, cleanBuild, copyAll bool) error {
 	var buildErrors []error
 	file, err := os.Open(batchPath)
 	if err != nil {return fmt.Errorf("[BuildBatch] Error occurred while opening batch file: %w", err)}
@@ -205,10 +207,10 @@ func BuildBatch(batchPath, outputDir string, showWarnings, cleanBuild bool) erro
 
 		fmt.Printf("== %d° Plugin ==========\n", n+1)
 
-		err = BuildPlugin(projectPath, jucePath, outputDir, buildType, buildForOS, pluginFormats, showWarnings, cleanBuild)
+		compilationErrors := BuildPlugin(projectPath, jucePath, outputDir, buildType, buildForOS, pluginFormats, showWarnings, cleanBuild, copyAll)
 
 		// format single n° plugin error
-		if err != nil {buildErrors = append(buildErrors, fmt.Errorf("[Plugin %d] Error occurred while building %s:\n%w", n+1, projectPath[strings.LastIndex(projectPath, "/")+1:], err))}
+		if compilationErrors != nil {buildErrors = append(buildErrors, fmt.Errorf("[Plugin %d] Error occurred while building %s:\n%v", n+1, projectPath[strings.LastIndex(projectPath, "/")+1:], compilationErrors))}
 		n++
 	}
 

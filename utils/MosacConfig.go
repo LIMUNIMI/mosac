@@ -42,7 +42,7 @@ func LoadMosacConfig(projectDir string) (*MosacConfig, bool, error) {
 	configPath := filepath.Join(projectDir, "mosac.conf")
 	file, err := os.Open(configPath)
 	if err != nil {
-		if os.IsNotExist(err) {return nil, false, err}
+		if os.IsNotExist(err) {return nil, false, nil}
 		return nil, false, fmt.Errorf("[MosacConfig] error while opening %s: %w", configPath, err)
 	}
 	defer file.Close()

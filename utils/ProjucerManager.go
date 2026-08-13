@@ -136,7 +136,7 @@ func updateJucerFallbackMetadata(jucerFilePath string) error {
 	attrs := map[string]string{
 		"name":                       getString(raw.Name, "MOSAC"),
 		"version":                    getString(raw.Version, "1.0.0"),
-		"companyName":                getString(raw.CompanyName, "Laboratorio-di-Informatica-Musicale"),
+		"companyName":                getString(raw.CompanyName, "LIM"),
 		"pluginManufacturerCode":     getString(raw.PluginManufacturerCode, "LIM!"),
 		"pluginManufacturer":         getString(raw.PluginManufacturer, "LIM"),
 		"pluginCode":                 getNormalizedPluginCode(raw),

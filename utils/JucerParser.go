@@ -51,7 +51,7 @@ func normalizeRawJucerProject(raw *RawJucerProject, pluginFormats []string) {
 		raw.Version = &defaultVersion
 	}
 	if raw.CompanyName == nil {
-		defaultCompanyName := "Laboratorio di Informatica Musicale"
+		defaultCompanyName := "LIM"
 		raw.CompanyName = &defaultCompanyName
 	}
 	if raw.PluginManufacturerCode == nil {
@@ -150,7 +150,7 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 	// apply minimum required metadata
 	proj.Name = getString(raw.Name, "MOSAC")
 	proj.Version = getString(raw.Version, "1.0.0")
-	proj.CompanyName = getString(raw.CompanyName, "Laboratorio di Informatica Musicale")
+	proj.CompanyName = getString(raw.CompanyName, "LIM")
 	proj.PluginManufacturerCode = getString(raw.PluginManufacturerCode, "LIM!")
 	proj.PluginManufacturer = getString(raw.PluginManufacturer, "LIM")
 	pluginCode := getString(raw.PluginCode, "Lim0")

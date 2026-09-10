@@ -3,75 +3,207 @@ package main
 import (
 	"flag"
 	"fmt"
-	"mosac/builders"
-	"mosac/utils"
+	"os"
+	"slices"
 	"strings"
-	"path/filepath"
-)
-
-
-
-var (
-	projectDir = flag.String("PP", "", "Path to the Plugin Project directory")
-	juceDir = flag.String("JP", "", "Path to the JUCE directory")
-	outputDir = flag.String("OP", "", "Path to the output directory.")
-	buildType = flag.String("b", "Release", "Build type [Debug or Release]")
-	buildForOS = flag.String("sys", "MacOS,Linux,Windows", "Comma-separated list of targeted OS to build for.")
-	pluginFormats = flag.String("formats", "Standalone,LV2,VST3,AU,Unity,AAX", "Comma-separated list of plugin formats to build.")
-
-	initialize = flag.Bool("initialize", false, "Builds required Docker images, builds Projucer (for every JUCE submodule) and stops the program.")
-	batchPath = flag.String("batch", "", "Path to a batch file containing multiple build commands.\nSee README.md for more information on the batch file format.")
-	showWarnings = flag.Bool("w", false, "Shows warnings for projects with facultative blank fields [skips the build].")
-	cleanBuild = flag.Bool("clean", false, "Cleans the /build directory before building the plugin.")
-	copyAll = flag.Bool("copyAll", false, "copies all the plugin formats for all the OS, regardless of the compilation output code.")
 )
 
 func main() {
-	flag.Parse()
-
-	if *initialize {
-		cli, err := utils.StartDocker()
-		if err != nil {fmt.Printf("%v\n", err);return}
-
-		fmt.Println("[MOSAC] Building required Docker images...")
-		err = utils.BuildImageFromEmbedded(cli, "juce-builder:linux", "go_juce_builder_linux")
-		err = utils.BuildImageFromEmbedded(cli, "juce-builder:windows", "go_juce_builder_windows")
-		if err != nil {fmt.Printf("[MOSAC] Error occurred while building Docker images: %v\n", err)}
-
-		// change JUCE version if updated in the future
-		pathJUCE7, err := utils.ResolveJuceDirFromVersion("JUCE7")
-		if err != nil {fmt.Printf("[MOSAC] Error occurred while resolving JUCE7 directory: %v\n", err)}
-		pathJUCE8, err := utils.ResolveJuceDirFromVersion("JUCE8")
-		if err != nil {fmt.Printf("[MOSAC] Error occurred while resolving JUCE8 directory: %v\n", err)}
-		_, err = utils.CheckIfProjucerIsAlreadyBuilt(pathJUCE7)
-		if err != nil {fmt.Printf("[MOSAC] Error occurred while checking Projucer for JUCE7: %v\n", err)}
-		_, err = utils.CheckIfProjucerIsAlreadyBuilt(pathJUCE8)
-		if err != nil {fmt.Printf("[MOSAC] Error occurred while checking Projucer for JUCE8: %v\n", err)}
-		return
+	if len(os.Args) < 2 {
+		printRootHelp()
+		os.Exit(0)
 	}
 
-
-	// ===== BATCH BUILD =====
-	if *batchPath != "" {
-		batchPath, err := filepath.Abs(*batchPath)
-		if err != nil {fmt.Printf("[MOSAC] Error occurred while resolving batch file path: %v\n", err); return}
-
-		if *outputDir == "" {fmt.Printf("[MOSAC] Output path not specified.\n\n\tUsage: go run mosac.go -batch path/to/batch.csv -OP path/to/outputDir\n\n");return}
-		outputDir, err := filepath.Abs(*outputDir)
-		if err != nil {fmt.Printf("[MOSAC] Error occurred while resolving output directory path: %v\n", err); return}
-
-		fmt.Printf("===== MOSAC - Batch Mode =====\nBatch file: %s\nOutput directory: %s\n==============================\n\n", batchPath, outputDir)
-
-		builders.BuildBatch(batchPath, outputDir, *showWarnings, *cleanBuild, *copyAll)
-		
-		return
+	switch os.Args[1] {
+	case "create-batch":
+		createBatchCSVFile(os.Args[2:])
+	case "health":
+		runHealthCmd()
+	case "build":
+		runBuildCmd(os.Args[2:])
+	case "update":
+		runUpdateCmd(os.Args[2:])
+	case "-h", "--help", "help":
+		printRootHelp()
+		os.Exit(0)
+	default:
+		fmt.Printf("Error: unknown command '%s'.\n\n", os.Args[1])
+		printRootHelp()
+		os.Exit(1)
 	}
-
-	// ===== SINGLE BUILD =====
-	fmt.Println("===== MOSAC =====")
-
-	buildForOS := strings.Split(*buildForOS, ",")
-	pluginFormats := strings.Split(*pluginFormats, ",")
-
-	builders.BuildPlugin(*projectDir, *juceDir, *outputDir, *buildType, buildForOS, pluginFormats, *showWarnings, *cleanBuild, *copyAll)
 }
+
+// -------------------------------------------------------------
+// SUBCOMMAND: batch
+// -------------------------------------------------------------
+func createBatchCSVFile(args []string) {
+	batchCmd := flag.NewFlagSet("create-batch", flag.ExitOnError)
+
+	dirPtr := batchCmd.String("dir", "", "directory containing the projects")
+	jucePtr := batchCmd.String("juce", "", "default JUCE version to use")
+	outPtr := batchCmd.String("out", "", "output directory")
+	buildTypePtr := batchCmd.String("c", "Release", "build configuration (Debug or Release)")
+	sysPtr := batchCmd.String("sys", "MacOS,Linux,Windows", "comma-separated target system")
+	formatsPtr := batchCmd.String("formats", "Standalone,VST3,AU,LV2,Unity,AAX", "comma-separated build formats")
+
+	batchCmd.Parse(args)
+
+	if *dirPtr == "" || *jucePtr == "" || *outPtr == "" {
+		fmt.Println("Error: Missing required flags for batch command.")
+		batchCmd.Usage()
+		os.Exit(1)
+	}
+
+	if !IsFlagValid(buildTypePtr, []string{"Debug", "Release"}) {
+		fmt.Println("Error: Invalid build configuration. Must be 'Debug' or 'Release'.")
+		batchCmd.Usage()
+		os.Exit(1)
+	}
+
+	if !IsFlagValid(sysPtr, []string{"MacOS", "Linux", "Windows"}) {
+		fmt.Println("Error: Invalid system flag. Must be a comma-separated list of 'MacOS', 'Linux', 'Windows'.")
+		batchCmd.Usage()
+		os.Exit(1)
+	}
+
+	if !IsFlagValid(formatsPtr, []string{"Standalone", "VST3", "AU", "LV2", "Unity", "AAX"}) {
+		fmt.Println("Error: Invalid formats flag. Must be a comma-separated list of 'Standalone', 'VST3', 'AU', 'LV2', 'Unity', 'AAX'.")
+		batchCmd.Usage()
+		os.Exit(1)
+	}
+
+	//TODO: batch maker logic
+
+}
+
+// -------------------------------------------------------------
+// SUBCOMMAND: health
+// -------------------------------------------------------------
+func runHealthCmd() {
+	// checks for Docker installation, Docker daemon running, and JUCE version availability
+}
+
+// -------------------------------------------------------------
+// SUBCOMMAND: update
+// -------------------------------------------------------------
+func runUpdateCmd(args []string) {
+	updateCmd := flag.NewFlagSet("update", flag.ExitOnError)
+	versionPtr := updateCmd.String("v", "latest", "desired JUCE version to update to (default: latest)")
+
+	updateCmd.Parse(args)
+
+	fmt.Printf("Updating JUCE to version: %s\n", *versionPtr)
+	UpdateJUCE(*versionPtr)
+}
+
+// -------------------------------------------------------------
+// SUBCOMMAND: build
+// -------------------------------------------------------------
+func runBuildCmd(args []string) {
+	buildCmd := flag.NewFlagSet("build", flag.ExitOnError)
+
+	batchFilePtr := buildCmd.String("b", "", "path to a batch.csv file")
+
+	ppPtr := buildCmd.String("PP", "", "single project path")
+	jpPtr := buildCmd.String("JP", "", "JUCE path")
+	opPtr := buildCmd.String("OP", "", "output path for the build(s)")
+
+	buildTypePtr := buildCmd.String("c", "Release", "build configuration (Debug or Release)")
+	sysPtr := buildCmd.String("sys", "MacOS,Linux,Windows", "comma-separated target system (MacOS, Linux, Windows)")
+	formatsPtr := buildCmd.String("formats", "Standalone,VST3,AU,LV2,Unity,AAX", "comma-separated build formats (VST3,AU,LV2,Standalone,Unity,AAX)")
+	newPtr := buildCmd.Bool("new", false, "perform a clean build (removes build/ and Builds/ folders)")
+
+	buildCmd.Parse(args)
+
+	if !IsFlagValid(buildTypePtr, []string{"Debug", "Release"}) {
+		fmt.Println("Error: Invalid build configuration. Must be 'Debug' or 'Release'.")
+		buildCmd.Usage()
+		os.Exit(1)
+	}
+
+	if !IsFlagValid(sysPtr, []string{"MacOS", "Linux", "Windows"}) {
+		fmt.Println("Error: Invalid system flag. Must be a comma-separated list of 'MacOS', 'Linux', 'Windows'.")
+		buildCmd.Usage()
+		os.Exit(1)
+	}
+
+	if !IsFlagValid(formatsPtr, []string{"Standalone", "VST3", "AU", "LV2", "Unity", "AAX"}) {
+		fmt.Println("Error: Invalid formats flag. Must be a comma-separated list of 'Standalone', 'VST3', 'AU', 'LV2', 'Unity', 'AAX'.")
+		buildCmd.Usage()
+		os.Exit(1)
+	}
+
+	if *batchFilePtr != "" { // batch build logic
+		if opPtr == nil || *opPtr == "" {
+			fmt.Println("Error: Output path (-OP) is required for batch builds.")
+			buildCmd.Usage()
+			os.Exit(1)
+		}
+
+		if *ppPtr != "" || *jpPtr != "" {
+			fmt.Println("Error: Cannot specify both batch file (-b) and single project flags (-PP, -JP).")
+			buildCmd.Usage()
+			os.Exit(1)
+		}
+
+		// TODO: implement batch build logic
+		BuildBatch(*batchFilePtr, *opPtr, *newPtr)
+
+		return
+	}
+
+	if *ppPtr != "" { // single project build logic
+		if *opPtr == "" {
+			fmt.Println("Error: Output path (-OP) is required for single project builds.")
+			buildCmd.Usage()
+			os.Exit(1)
+		}
+
+		// TODO: implement single project compilation logic
+		BuildPlugin(*ppPtr, *jpPtr, *opPtr, *buildTypePtr, *sysPtr, *formatsPtr, *newPtr)
+
+		return
+	}
+}
+
+// -------------------------------------------------------------
+// HELP MENU
+// -------------------------------------------------------------
+func printRootHelp() {
+	fmt.Println(`MOSAC - JUCE Audio Plugin Build Automator
+
+Usage:
+  mosac <command> [options]
+
+Commands:
+  create-batch    utility to create a batch file (batch.csv) for multiple builds.
+  health          run a diagnostic check on the application state.
+  build           execute a build. accepts a CSV batch file (-b) or a single project (-PP, -JP, -OP, -sys, -formats, -new).
+  update          updates JUCE framework to the desired version (default: latest).
+
+Use "mosac <command> -h" to see options for a specific command.`)
+}
+
+// -------------------------------------------------------------
+func IsFlagValid(flagVal *string, allowed []string) bool {
+	if flagVal == nil || *flagVal == "" {
+		return false
+	}
+	items := strings.SplitSeq(*flagVal, ",")
+
+	for item := range items {
+		cleanItem := strings.TrimSpace(item)
+		if cleanItem == "" || !slices.Contains(allowed, cleanItem) {
+			return false
+		}
+	}
+	return true
+}
+
+// provvisory functions for build logic, to be implemented in the future
+func BuildBatch(batchFilePath string, outputPath string, new bool) {}
+
+func BuildPlugin(projectPath string, jucePath string, outputPath string, buildType string, sys string, formats string, new bool) {
+}
+
+func UpdateJUCE(version string) {}

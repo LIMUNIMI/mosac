@@ -4,11 +4,27 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
+	"path/filepath"
 	"slices"
 	"strings"
+	"syscall"
+
+	"mosac/internal/juce"
 )
 
 func main() {
+	// ------- LOCK	------------------------------------------
+	lockFile, lockPath, err := acquireLock()
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		fmt.Printf("If you are certain MOSAC is not running, manually delete the file:\n%s\n", lockPath)
+		os.Exit(1)
+	}
+	defer releaseLock(lockFile, lockPath)
+	setupSignalHandler(lockFile, lockPath)
+	// --------------------------------------------------------
+
 	if len(os.Args) < 2 {
 		printRootHelp()
 		os.Exit(0)
@@ -93,7 +109,7 @@ func runUpdateCmd(args []string) {
 	updateCmd.Parse(args)
 
 	fmt.Printf("Updating JUCE to version: %s\n", *versionPtr)
-	UpdateJUCE(*versionPtr)
+	juce.Update(*versionPtr)
 }
 
 // -------------------------------------------------------------
@@ -200,10 +216,57 @@ func IsFlagValid(flagVal *string, allowed []string) bool {
 	return true
 }
 
+// -------------------------------------------------------------
+// LOCK SYSTEM
+// -------------------------------------------------------------
+
+// attempts to create a lock file atomically. It returns the file descriptor, the path to the lock file, and an error if locked.
+func acquireLock() (*os.File, string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, "", fmt.Errorf("could not get user home directory: %v", err)
+	}
+
+	mosacDir := filepath.Join(homeDir, ".mosac")
+	os.MkdirAll(mosacDir, 0755)
+	lockPath := filepath.Join(mosacDir, "mosac.lock")
+
+	// os.O_EXCL ensures the file is created ONLY if it doesn't already exist.
+	file, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0666)
+	if err != nil {
+		return nil, lockPath, fmt.Errorf("another instance of MOSAC is already running")
+	}
+
+	// write the current PID into the lock file for debugging
+	fmt.Fprintf(file, "%d\n", os.Getpid())
+	return file, lockPath, nil
+}
+
+// closes and removes the lock file
+func releaseLock(file *os.File, lockPath string) {
+	if file != nil {
+		file.Close()
+	}
+	if lockPath != "" {
+		os.Remove(lockPath)
+	}
+}
+
+// catches termination signals to ensure the lock file is correctly removed before exiting.
+func setupSignalHandler(file *os.File, lockPath string) {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-sigChan
+		fmt.Println("\n[!] Received interrupt signal. Cleaning up lock and exiting...")
+		releaseLock(file, lockPath)
+		os.Exit(1)
+	}()
+}
+
 // provvisory functions for build logic, to be implemented in the future
 func BuildBatch(batchFilePath string, outputPath string, new bool) {}
 
 func BuildPlugin(projectPath string, jucePath string, outputPath string, buildType string, sys string, formats string, new bool) {
 }
-
-func UpdateJUCE(version string) {}

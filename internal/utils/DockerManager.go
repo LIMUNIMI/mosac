@@ -36,26 +36,26 @@ func StartDocker() (*client.Client, error) {
 	// checks if already running
 	_, err = cli.Ping(ctx)
 	if err == nil {
-		fmt.Println("[DockerManager] Docker already running.")
+		fmt.Println("        [DockerManager] Docker already running.")
 		return cli, nil
 	}
 
 	// if not running, try to start Docker on host (MacOS)
 	cmd := exec.Command("open", "-a", "Docker")
-	if err := cmd.Run(); err != nil {return nil, fmt.Errorf("[DockerManager] could not run Docker: %w", err)}
+	if err := cmd.Run(); err != nil {return nil, fmt.Errorf("        [DockerManager] could not run Docker: %w", err)}
 
-	fmt.Println("[DockerManager] Trying to open Docker...")
+	fmt.Println("        [DockerManager] Trying to open Docker...")
 	for range 30 {
 		time.Sleep(1 * time.Second)
 
 		_, err = cli.Ping(ctx)
 		if err == nil {
-			fmt.Println("[DockerManager] Docker is running.")
+			fmt.Println("        [DockerManager] Docker is running.")
 			return cli, nil
 		}
 	}
 
-	return nil, fmt.Errorf("[DockerManager] Timeout 30s: docker failed to start")
+	return nil, fmt.Errorf("        [DockerManager] Timeout 30s: docker failed to start")
 }
 
 
@@ -68,9 +68,9 @@ func BuildImageFromEmbedded(cli *client.Client, imageName string, targetStage st
 	filterArgs.Add("reference", imageName)
 
 	images, err := cli.ImageList(ctx, image.ListOptions{Filters: filterArgs})
-	if err != nil {return fmt.Errorf("[DockerManager] Error while checking existing images: %w", err)}
+	if err != nil {return fmt.Errorf("        [DockerManager] Error while checking existing images: %w", err)}
 	if len(images) > 0 {
-		fmt.Println("[DockerManager] Image already built.")
+		fmt.Println("        [DockerManager] Image already built.")
 		return nil
 	}
 

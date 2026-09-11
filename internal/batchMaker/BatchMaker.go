@@ -1,4 +1,4 @@
-package main
+package batchMaker
 
 import (
 	"fmt"
@@ -7,67 +7,75 @@ import (
 	"strings"
 )
 
-func main() {
-	if len(os.Args) < 4 {
-		fmt.Println("Error: missing arguments.")
-		fmt.Println("Usage: go run BatchMaker.go <dirPath> <JucePath> <batchOutputPath>")
-		fmt.Println("If a project folder contains 'mosac.conf', the JUCE path column is left empty and the build will resolve the JUCE version automatically.")
-		return
+// scans the provided directory for projects and generates a batch.csv file.
+func CreateBatchCSV(analysisDir, defaultJuce, outputDir, buildConfig, systems, formats string) error {
+	analysisPath, err := filepath.Abs(analysisDir)
+	if err != nil {
+		return fmt.Errorf("error resolving absolute path for analysis directory: %v", err)
 	}
 
-	rawAnalysisPath := os.Args[1]
-	rawJucePath := os.Args[2]
-	rawOutputPath := os.Args[3]
-
-	analysisPath, err := filepath.Abs(rawAnalysisPath)
-	if err != nil {fmt.Printf("Error while making absolute path for analysis: %v\n", err);return}
-	jucePath, err := filepath.Abs(rawJucePath)
-	if err != nil {fmt.Printf("Error while making absolute path for JUCE: %v\n", err);return}
-	outputPath, err := filepath.Abs(rawOutputPath)
-	if err != nil {fmt.Printf("Error while making absolute path for output: %v\n", err);return}
+	outPath, err := filepath.Abs(outputDir)
+	if err != nil {
+		return fmt.Errorf("error resolving absolute path for output directory: %v", err)
+	}
 
 	entries, err := os.ReadDir(analysisPath)
-	if err != nil {fmt.Printf("Error while reading analysis directory: %v\n", err);return}
+	if err != nil {
+		return fmt.Errorf("error reading analysis directory: %v", err)
+	}
 
-	var ProjectPaths []string
+	var projectPaths []string
 	for _, entry := range entries {
 		if entry.IsDir() {
 			subDirPath := filepath.Join(analysisPath, entry.Name())
-			ProjectPaths = append(ProjectPaths, subDirPath)
+			projectPaths = append(projectPaths, subDirPath)
 		}
 	}
 
-	info, err := os.Stat(outputPath)
-	if os.IsNotExist(err) || !info.IsDir() {fmt.Printf("Error: the specified output directory '%s' does not exist or is not a folder.\n", outputPath)
-		return
-	} else if err != nil {
-		fmt.Printf("Error while checking the output directory: %v\n", err)
-		return
+	if len(projectPaths) == 0 {
+		return fmt.Errorf("no project directories found in %s", analysisPath)
 	}
 
-	batchFilePath := filepath.Join(outputPath, "batch.csv")
-	file, err := os.Create(batchFilePath)
-	if err != nil {fmt.Printf("Error while creating the file %s: %v\n", "batch.csv", err);return}
-
-	for _, projPath := range ProjectPaths {
-		juceClm := jucePath // if dir contains mosac.conf, csv's JUCE path is emmpty
-		if info, err := os.Stat(filepath.Join(projPath, "mosac.conf")); err == nil && !info.IsDir() {juceClm = ""}
-
-		line := fmt.Sprintf("%s,%s,Release,Linux;Windows;MacOS,Standalone;VST3;AU;LV2;Unity\n", projPath, strings.TrimSpace(juceClm))
-		
-		_, err := file.WriteString(line)
+	info, err := os.Stat(outPath)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(outPath, 0755)
 		if err != nil {
-			fmt.Printf("Error while writing to the file: %v\n", err)
-			file.Close()
-			return
+			return fmt.Errorf("error creating output directory: %v", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("error checking the output directory: %v", err)
+	} else if !info.IsDir() {
+		return fmt.Errorf("the specified output path '%s' is not a directory", outPath)
+	}
+
+	batchFilePath := filepath.Join(outPath, "batch.csv")
+	file, err := os.Create(batchFilePath)
+	if err != nil {
+		return fmt.Errorf("error creating the file batch.csv: %v", err)
+	}
+	defer file.Close()
+
+	sysCsvList := strings.ReplaceAll(systems, ",", ";")
+	fmtCsvList := strings.ReplaceAll(formats, ",", ";")
+
+	for _, projPath := range projectPaths {
+		juceClm := strings.TrimSpace(defaultJuce)
+
+		// if the project directory contains a 'mosac.conf', leave the JUCE column empty
+		confPath := filepath.Join(projPath, "mosac.conf")
+		if stat, err := os.Stat(confPath); err == nil && !stat.IsDir() {
+			juceClm = ""
+		}
+
+		line := fmt.Sprintf("%s,%s,%s,%s,%s\n", projPath, juceClm, buildConfig, sysCsvList, fmtCsvList)
+
+		if _, err := file.WriteString(line); err != nil {
+			return fmt.Errorf("error while writing to batch.csv: %v", err)
 		}
 	}
 
-	err = file.Close()
-	if err != nil {
-		fmt.Printf("Error during the closing of the file: %v\n", err)
-		return
-	}
+	fmt.Printf("    Successfully created batch file at: %s\n", batchFilePath)
+	fmt.Printf("    Found %d projects.\n", len(projectPaths))
 
-	fmt.Printf("Batch file %s created successfully.\n", "batch.csv")
+	return nil
 }

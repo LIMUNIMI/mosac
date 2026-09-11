@@ -10,16 +10,22 @@ import (
 	"strings"
 	"syscall"
 
+	"mosac/internal/batchMaker"
+	"mosac/internal/health"
 	"mosac/internal/juce"
 )
 
 func main() {
+	os.Exit(run())
+}
+
+func run() (exitCode int) {
 	// ------- LOCK	------------------------------------------
 	lockFile, lockPath, err := acquireLock()
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		fmt.Printf("If you are certain MOSAC is not running, manually delete the file:\n%s\n", lockPath)
-		os.Exit(1)
+		return 1
 	}
 	defer releaseLock(lockFile, lockPath)
 	setupSignalHandler(lockFile, lockPath)
@@ -27,96 +33,113 @@ func main() {
 
 	if len(os.Args) < 2 {
 		printRootHelp()
-		os.Exit(0)
+		return 0
 	}
 
 	switch os.Args[1] {
 	case "create-batch":
-		createBatchCSVFile(os.Args[2:])
+		return createBatchCSVFile(os.Args[2:])
 	case "health":
-		runHealthCmd()
+		return runHealthCmd()
 	case "build":
-		runBuildCmd(os.Args[2:])
+		return runBuildCmd(os.Args[2:])
 	case "update":
-		runUpdateCmd(os.Args[2:])
+		return runUpdateCmd(os.Args[2:])
 	case "-h", "--help", "help":
 		printRootHelp()
-		os.Exit(0)
+		return 0
 	default:
 		fmt.Printf("Error: unknown command '%s'.\n\n", os.Args[1])
 		printRootHelp()
-		os.Exit(1)
+		return 1
 	}
 }
 
 // -------------------------------------------------------------
 // SUBCOMMAND: batch
 // -------------------------------------------------------------
-func createBatchCSVFile(args []string) {
-	batchCmd := flag.NewFlagSet("create-batch", flag.ExitOnError)
+func createBatchCSVFile(args []string) int {
+	batchCmd := flag.NewFlagSet("create-batch", flag.ContinueOnError)
 
 	dirPtr := batchCmd.String("dir", "", "directory containing the projects")
 	jucePtr := batchCmd.String("juce", "", "default JUCE version to use")
-	outPtr := batchCmd.String("out", "", "output directory")
+	outPtr := batchCmd.String("out", "", "output directory for batch.csv file")
 	buildTypePtr := batchCmd.String("c", "Release", "build configuration (Debug or Release)")
 	sysPtr := batchCmd.String("sys", "MacOS,Linux,Windows", "comma-separated target system")
 	formatsPtr := batchCmd.String("formats", "Standalone,VST3,AU,LV2,Unity,AAX", "comma-separated build formats")
 
-	batchCmd.Parse(args)
+	if err := batchCmd.Parse(args); err != nil {
+		return 1
+	}
 
 	if *dirPtr == "" || *jucePtr == "" || *outPtr == "" {
 		fmt.Println("Error: Missing required flags for batch command.")
 		batchCmd.Usage()
-		os.Exit(1)
+		return 1
 	}
 
 	if !IsFlagValid(buildTypePtr, []string{"Debug", "Release"}) {
 		fmt.Println("Error: Invalid build configuration. Must be 'Debug' or 'Release'.")
 		batchCmd.Usage()
-		os.Exit(1)
+		return 1
 	}
 
 	if !IsFlagValid(sysPtr, []string{"MacOS", "Linux", "Windows"}) {
 		fmt.Println("Error: Invalid system flag. Must be a comma-separated list of 'MacOS', 'Linux', 'Windows'.")
 		batchCmd.Usage()
-		os.Exit(1)
+		return 1
 	}
 
 	if !IsFlagValid(formatsPtr, []string{"Standalone", "VST3", "AU", "LV2", "Unity", "AAX"}) {
 		fmt.Println("Error: Invalid formats flag. Must be a comma-separated list of 'Standalone', 'VST3', 'AU', 'LV2', 'Unity', 'AAX'.")
 		batchCmd.Usage()
-		os.Exit(1)
+		return 1
 	}
 
-	//TODO: batch maker logic
+	err := batchMaker.CreateBatchCSV(*dirPtr, *jucePtr, *outPtr, *buildTypePtr, *sysPtr, *formatsPtr)
+	if err != nil {
+		fmt.Printf("Error creating batch file: %v\n", err)
+		return 1
+	}
 
+	return 0
 }
 
 // -------------------------------------------------------------
 // SUBCOMMAND: health
 // -------------------------------------------------------------
-func runHealthCmd() {
-	// checks for Docker installation, Docker daemon running, and JUCE version availability
+func runHealthCmd() int {
+	if err := health.Check(); err != nil {
+		fmt.Printf("\n[!] Health check failed: %v\n", err)
+		return 1
+	}
+	return 0
 }
 
 // -------------------------------------------------------------
 // SUBCOMMAND: update
 // -------------------------------------------------------------
-func runUpdateCmd(args []string) {
-	updateCmd := flag.NewFlagSet("update", flag.ExitOnError)
+func runUpdateCmd(args []string) int {
+	updateCmd := flag.NewFlagSet("update", flag.ContinueOnError)
 	versionPtr := updateCmd.String("v", "latest", "desired JUCE version to update to (default: latest)")
 
-	updateCmd.Parse(args)
+	if err := updateCmd.Parse(args); err != nil {
+		return 1
+	}
 
 	fmt.Printf("Updating JUCE to version: %s\n", *versionPtr)
-	juce.Update(*versionPtr)
+	if err := juce.Update(*versionPtr); err != nil {
+		fmt.Printf("Error updating JUCE: %v\n", err)
+		return 1
+	}
+	return 0
 }
 
 // -------------------------------------------------------------
 // SUBCOMMAND: build
 // -------------------------------------------------------------
-func runBuildCmd(args []string) {
-	buildCmd := flag.NewFlagSet("build", flag.ExitOnError)
+func runBuildCmd(args []string) int {
+	buildCmd := flag.NewFlagSet("build", flag.ContinueOnError)
 
 	batchFilePtr := buildCmd.String("b", "", "path to a batch.csv file")
 
@@ -129,57 +152,61 @@ func runBuildCmd(args []string) {
 	formatsPtr := buildCmd.String("formats", "Standalone,VST3,AU,LV2,Unity,AAX", "comma-separated build formats (VST3,AU,LV2,Standalone,Unity,AAX)")
 	newPtr := buildCmd.Bool("new", false, "perform a clean build (removes build/ and Builds/ folders)")
 
-	buildCmd.Parse(args)
+	if err := buildCmd.Parse(args); err != nil {
+		return 1
+	}
 
 	if !IsFlagValid(buildTypePtr, []string{"Debug", "Release"}) {
 		fmt.Println("Error: Invalid build configuration. Must be 'Debug' or 'Release'.")
 		buildCmd.Usage()
-		os.Exit(1)
+		return 1
 	}
 
 	if !IsFlagValid(sysPtr, []string{"MacOS", "Linux", "Windows"}) {
 		fmt.Println("Error: Invalid system flag. Must be a comma-separated list of 'MacOS', 'Linux', 'Windows'.")
 		buildCmd.Usage()
-		os.Exit(1)
+		return 1
 	}
 
 	if !IsFlagValid(formatsPtr, []string{"Standalone", "VST3", "AU", "LV2", "Unity", "AAX"}) {
 		fmt.Println("Error: Invalid formats flag. Must be a comma-separated list of 'Standalone', 'VST3', 'AU', 'LV2', 'Unity', 'AAX'.")
 		buildCmd.Usage()
-		os.Exit(1)
+		return 1
 	}
 
 	if *batchFilePtr != "" { // batch build logic
 		if opPtr == nil || *opPtr == "" {
 			fmt.Println("Error: Output path (-OP) is required for batch builds.")
 			buildCmd.Usage()
-			os.Exit(1)
+			return 1
 		}
 
 		if *ppPtr != "" || *jpPtr != "" {
 			fmt.Println("Error: Cannot specify both batch file (-b) and single project flags (-PP, -JP).")
 			buildCmd.Usage()
-			os.Exit(1)
+			return 1
 		}
 
 		// TODO: implement batch build logic
 		BuildBatch(*batchFilePtr, *opPtr, *newPtr)
 
-		return
+		return 0
 	}
 
 	if *ppPtr != "" { // single project build logic
 		if *opPtr == "" {
 			fmt.Println("Error: Output path (-OP) is required for single project builds.")
 			buildCmd.Usage()
-			os.Exit(1)
+			return 1
 		}
 
 		// TODO: implement single project compilation logic
 		BuildPlugin(*ppPtr, *jpPtr, *opPtr, *buildTypePtr, *sysPtr, *formatsPtr, *newPtr)
 
-		return
+		return 0
 	}
+
+	return 0
 }
 
 // -------------------------------------------------------------
@@ -198,22 +225,6 @@ Commands:
   update          updates JUCE framework to the desired version (default: latest).
 
 Use "mosac <command> -h" to see options for a specific command.`)
-}
-
-// -------------------------------------------------------------
-func IsFlagValid(flagVal *string, allowed []string) bool {
-	if flagVal == nil || *flagVal == "" {
-		return false
-	}
-	items := strings.SplitSeq(*flagVal, ",")
-
-	for item := range items {
-		cleanItem := strings.TrimSpace(item)
-		if cleanItem == "" || !slices.Contains(allowed, cleanItem) {
-			return false
-		}
-	}
-	return true
 }
 
 // -------------------------------------------------------------
@@ -263,6 +274,22 @@ func setupSignalHandler(file *os.File, lockPath string) {
 		releaseLock(file, lockPath)
 		os.Exit(1)
 	}()
+}
+
+// -------------------------------------------------------------
+func IsFlagValid(flagVal *string, allowed []string) bool {
+	if flagVal == nil || *flagVal == "" {
+		return false
+	}
+	items := strings.SplitSeq(*flagVal, ",")
+
+	for item := range items {
+		cleanItem := strings.TrimSpace(item)
+		if cleanItem == "" || !slices.Contains(allowed, cleanItem) {
+			return false
+		}
+	}
+	return true
 }
 
 // provvisory functions for build logic, to be implemented in the future

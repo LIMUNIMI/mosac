@@ -8,74 +8,94 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 )
 
-
-
 func projucerExecutablePath(projucerAppPath string) string {
-	return filepath.Join(projucerAppPath, "Contents", "MacOS", "Projucer")
+	if runtime.GOOS == "darwin" {
+		return filepath.Join(projucerAppPath, "Contents", "MacOS", "Projucer")
+	}
+	return filepath.Join(filepath.Dir(projucerAppPath), "Projucer")
 }
 
-
-// checks if Projucer is already built in the given JUCE directory. If not, it builds Projucer and returns its path.
+// checks if Projucer is built in the given JUCE directory. If not, it builds Projucer and returns its path.
 func CheckIfProjucerIsAlreadyBuilt(jucePath string) (string, error) {
-	projucerPath, err := filepath.Abs(filepath.Join(jucePath, "extras", "Projucer", "Builds", "MacOSX", "build", "Release", "Projucer.app"))
-	if err != nil {return "", fmt.Errorf("[MacOSBuilder] Error occurred while resolving Projucer path: %w", err)}
-
-	if _, err := os.Stat(projucerPath); os.IsNotExist(err) {
-		fmt.Println("[MacOSBuilder] WARNING!")
-		fmt.Println("=================================================\n|| Building Projucer, this may take a while... ||\n=================================================")
-		err = buildProjucer(jucePath)
-		if err != nil {return "", fmt.Errorf("[MacOSBuilder] Error occurred while building Projucer: %w", err)}
+	projucerAppPath, err := filepath.Abs(filepath.Join(jucePath, "extras", "Projucer", "Builds", "MacOSX", "build", "Release", "Projucer.app"))
+	if err != nil {
+		return "", fmt.Errorf("[ProjucerManager] error occurred while resolving Projucer path: %w", err)
 	}
 
-	return projucerExecutablePath(projucerPath), nil
+	if _, err := os.Stat(projucerAppPath); os.IsNotExist(err) {
+		if runtime.GOOS != "darwin" {
+			return "", fmt.Errorf("[ProjucerManager] cannot build Projucer for macOS on a non-macOS host (%s)", runtime.GOOS)
+		}
+
+		fmt.Println("[ProjucerManager] WARNING!")
+		fmt.Println("=================================================")
+		fmt.Println("|| Building Projucer, this may take a while... ||")
+		fmt.Println("=================================================")
+
+		err = buildProjucer(jucePath)
+		if err != nil {
+			return "", fmt.Errorf("[ProjucerManager] error occurred while building Projucer: %w", err)
+		}
+	}
+
+	return projucerExecutablePath(projucerAppPath), nil
 }
 
+// builds the Projucer executable from a given JUCE directory using xcodebuild. It returns an error if the build fails.
+func buildProjucer(juceDir string) error {
+	projucerXcodeProj, err := filepath.Abs(filepath.Join(juceDir, "extras", "Projucer", "Builds", "MacOSX", "Projucer.xcodeproj"))
+	if err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while resolving Projucer Xcode project path: %w", err)
+	}
 
-// builds the Projucer executable from a given JUCE directory.
-// it returns an error if the build fails.
-func buildProjucer(juceDir string) (error) {
-	projucer_xcodeProj, err := filepath.Abs(filepath.Join(juceDir, "extras", "Projucer", "Builds", "MacOSX", "Projucer.xcodeproj"))
-	if err != nil {return fmt.Errorf("[Mosac] Error occurred while resolving Projucer Xcode project path: %w", err)}
+	buildProjucerCmd := []string{"xcodebuild", "-project", projucerXcodeProj, "-configuration", "Release"}
 
-	builProjucerCmd := []string{"xcodebuild", "-project", projucer_xcodeProj, "-configuration", "Release"}
-
-	cmd := exec.Command(builProjucerCmd[0], builProjucerCmd[1:]...)
+	cmd := exec.Command(buildProjucerCmd[0], buildProjucerCmd[1:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	fmt.Printf("[Mosac] Building Projucer from JUCE dir: %s\n", juceDir)
+	fmt.Printf("[ProjucerManager] Building Projucer from JUCE dir: %s\n", juceDir)
 
 	err = cmd.Run()
-	if err != nil {return fmt.Errorf("[Mosac] Error occurred while building Projucer: %w", err)}
+	if err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while building Projucer: %w", err)
+	}
 
-	fmt.Println("[Mosac] Projucer built successfully.")
-
+	fmt.Println("[ProjucerManager] Projucer built successfully.")
 	return nil
 }
 
-
-// resaves the unique Jucer project in projectPath using --resave
+// resaves the unique Jucer project in projectPath using the Projucer --resave command.
 func ResaveProject(projectPath, jucePath, projucerPath string, pluginFormats []string, skipAAX bool) error {
-	jucerFilePath, err := getJucerFilePath(projectPath)
-	if err != nil {return fmt.Errorf("[Mosac] Error occurred while resolving Jucer project file: %w", err)}
+	jucerFilePath, err := getJucerFilePath(projectPath) // Assumed to be in PluginXml.go
+	if err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while resolving Jucer project file: %w", err)
+	}
 
 	err = updateJucerFallbackMetadata(jucerFilePath)
-	if err != nil {return fmt.Errorf("[Mosac] Error occurred while normalizing Jucer metadata: %w", err)}
+	if err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while normalizing Jucer metadata: %w", err)
+	}
 
 	err = updateJucerModuleUseGlobalPath(jucerFilePath)
-	if err != nil {return fmt.Errorf("[Mosac] Error occurred while updating Jucer module usage: %w", err)}
+	if err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while updating Jucer module usage: %w", err)
+	}
 
 	err = updateJucerModulePaths(jucerFilePath, projectPath, jucePath)
-	if err != nil {return fmt.Errorf("[Mosac] Error occurred while updating Jucer module paths: %w", err)}
+	if err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while updating Jucer module paths: %w", err)
+	}
 
 	projucerFormats := make([]string, len(pluginFormats))
 	copy(projucerFormats, pluginFormats)
 
-	// substitute the current plugin formats in the Jucer project file with the selected ones (parameter)
+	// substitute the current plugin formats in the Jucer project file with the selected ones
 	for i, format := range projucerFormats {
 		switch format {
 		case "Standalone":
@@ -89,49 +109,63 @@ func ResaveProject(projectPath, jucePath, projucerPath string, pluginFormats []s
 		case "Unity":
 			projucerFormats[i] = "buildUnity"
 		case "AAX":
-			if skipAAX {fmt.Println("[Mosac] AAX format is only supported on MacOS (JUCE8 or newer).");continue}
+			if skipAAX {
+				fmt.Println("[ProjucerManager] AAX format is only supported on MacOS (JUCE 8 or newer). Skipping.")
+				continue
+			}
 			projucerFormats[i] = "buildAAX"
 		default:
-			return fmt.Errorf("[Mosac] Invalid plugin format: %s", format)
+			return fmt.Errorf("[ProjucerManager] invalid plugin format: %s", format)
 		}
 	}
 
 	file, err := os.ReadFile(jucerFilePath)
-	if err != nil {return fmt.Errorf("[Mosac] Error occurred while reading Jucer project file: %w", err)}
-	
+	if err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while reading Jucer project file: %w", err)
+	}
+
 	// replace the plugin formats in the Jucer project file
 	joined := strings.Join(projucerFormats, ",")
 	re := regexp.MustCompile(`pluginFormats\s*=\s*"[^"]*"`)
 	replacement := `pluginFormats="` + joined + `"`
 	newContent := re.ReplaceAllString(string(file), replacement)
-	
-	if err = os.WriteFile(jucerFilePath, []byte(newContent), 0o644); err != nil {return fmt.Errorf("[Mosac] Error occurred while writing Jucer project file: %w", err)}
+
+	if err = os.WriteFile(jucerFilePath, []byte(newContent), 0o644); err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while writing Jucer project file: %w", err)
+	}
 
 	cmd := exec.Command(projucerPath, "--resave", jucerFilePath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	fmt.Printf("[Mosac] Resaving Jucer project: %s\n", jucerFilePath)
+	fmt.Printf("[ProjucerManager] Resaving Jucer project: %s\n", jucerFilePath)
 
 	err = cmd.Run()
-	if err != nil {return fmt.Errorf("[Mosac] Error occurred while resaving Jucer project: %w", err)}
+	if err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while resaving Jucer project: %w", err)
+	}
+
 	return nil
 }
 
-
-
 func updateJucerFallbackMetadata(jucerFilePath string) error {
 	file, err := os.Open(jucerFilePath)
-	if err != nil {return fmt.Errorf("[Mosac] Error occurred while opening Jucer project file: %w", err)}
+	if err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while opening Jucer project file: %w", err)
+	}
 	defer file.Close()
 
 	var raw RawJucerProject
-	if err := xml.NewDecoder(file).Decode(&raw); err != nil {return fmt.Errorf("[Mosac] Error occurred while parsing Jucer project file: %w", err)}
+	if err := xml.NewDecoder(file).Decode(&raw); err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while parsing Jucer project file: %w", err)
+	}
 
 	normalizeRawJucerProject(&raw, nil)
 
 	content, err := os.ReadFile(jucerFilePath)
-	if err != nil {return fmt.Errorf("[Mosac] Error occurred while reading Jucer project file: %w", err)}
+	if err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while reading Jucer project file: %w", err)
+	}
 
 	attrs := map[string]string{
 		"name":                       getString(raw.Name, "MOSAC"),
@@ -140,7 +174,7 @@ func updateJucerFallbackMetadata(jucerFilePath string) error {
 		"pluginManufacturerCode":     getString(raw.PluginManufacturerCode, "LIM!"),
 		"pluginManufacturer":         getString(raw.PluginManufacturer, "LIM"),
 		"pluginCode":                 getNormalizedPluginCode(raw),
-		"pluginDesc":                 getString(raw.PluginDesc, "insert here italian plugin description"),
+		"pluginDesc":                 getString(raw.PluginDesc, "Insert here plugin description"),
 		"pluginName":                 getString(raw.PluginName, getString(raw.Name, "MOSAC")),
 		"companyEmail":               getString(raw.CompanyEmail, "lim@di.unimi.it"),
 		"companyWebsite":             getString(raw.CompanyWebsite, "https://www.lim.di.unimi.it/"),
@@ -158,24 +192,32 @@ func updateJucerFallbackMetadata(jucerFilePath string) error {
 	newContent := string(content)
 	for attr, value := range attrs {
 		newContent, err = replaceRootXMLAttribute(newContent, attr, value)
-		if err != nil {return err}
+		if err != nil {
+			return err
+		}
 	}
 
-	if newContent == string(content) {return nil}
+	if newContent == string(content) {
+		return nil
+	}
 
-	if err = os.WriteFile(jucerFilePath, []byte(newContent), 0o644); err != nil {return fmt.Errorf("[Mosac] Error occurred while writing Jucer project file: %w", err)}
+	if err = os.WriteFile(jucerFilePath, []byte(newContent), 0o644); err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while writing Jucer project file: %w", err)
+	}
 
 	return nil
 }
 
-
-
 func replaceRootXMLAttribute(content, attr, value string) (string, error) {
 	start := strings.Index(content, "<JUCERPROJECT")
-	if start == -1 {return content, nil}
+	if start == -1 {
+		return content, nil
+	}
 
 	end := strings.Index(content[start:], ">")
-	if end == -1 {return "", fmt.Errorf("[Mosac] malformed Jucer project file: missing closing tag for JUCERPROJECT")}
+	if end == -1 {
+		return "", fmt.Errorf("[ProjucerManager] malformed Jucer project file: missing closing tag for JUCERPROJECT")
+	}
 
 	openingTag := content[start : start+end+1]
 	attrRegex := regexp.MustCompile(attr + `\s*=\s*"[^"]*"`)
@@ -188,12 +230,12 @@ func replaceRootXMLAttribute(content, attr, value string) (string, error) {
 		updatedTag = strings.TrimSuffix(openingTag, ">") + " " + attr + `="` + escapedValue + `">`
 	}
 
-	if updatedTag == openingTag {return content, nil}
+	if updatedTag == openingTag {
+		return content, nil
+	}
 
 	return content[:start] + updatedTag + content[start+end+1:], nil
 }
-
-
 
 func escapeXMLAttribute(value string) string {
 	var buf bytes.Buffer
@@ -201,23 +243,24 @@ func escapeXMLAttribute(value string) string {
 	return buf.String()
 }
 
-
-
 func getNormalizedPluginCode(raw RawJucerProject) string {
 	pluginCode := getString(raw.PluginCode, "Lim0")
-	if pluginCode == "Lim0" && raw.ID != nil {pluginCode = getPluginCodeFromUID(*raw.ID)}
+	if pluginCode == "Lim0" && raw.ID != nil {
+		pluginCode = getPluginCodeFromUID(*raw.ID) // Assumed to be in PluginXml.go
+	}
 	return pluginCode
 }
 
-
-// changes the useGlobalPath attribute of all <MODULE> elements in the Jucer project file to "0" (false).
+// changes the useGlobalPath attribute of all <MODULE> elements to "0".
 func updateJucerModuleUseGlobalPath(jucerFilePath string) error {
 	content, err := os.ReadFile(jucerFilePath)
-	if err != nil {return fmt.Errorf("[Mosac] Error occurred while reading Jucer project file: %w", err)}
+	if err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while reading Jucer project file: %w", err)
+	}
 
 	lines := strings.Split(string(content), "\n")
 	modified := false
-	
+
 	for i, line := range lines {
 		if strings.Contains(line, `useGlobalPath="1"`) {
 			modified = true
@@ -225,25 +268,34 @@ func updateJucerModuleUseGlobalPath(jucerFilePath string) error {
 		}
 	}
 
-	if !modified {return nil}
+	if !modified {
+		return nil
+	}
 
 	newContent := strings.Join(lines, "\n")
-	if err = os.WriteFile(jucerFilePath, []byte(newContent), 0o644); err != nil {return fmt.Errorf("[Mosac] Error occurred while writing Jucer project file: %w", err)}
+	if err = os.WriteFile(jucerFilePath, []byte(newContent), 0o644); err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while writing Jucer project file: %w", err)
+	}
 
 	return nil
 }
 
-
-// updates the paths of all <MODULEPATH> elements in the Jucer project file in order
-// to point to the specified jucePath modules.
+// updates the paths of all <MODULEPATH> elements to point to the specified jucePath modules.
 func updateJucerModulePaths(jucerFilePath, projectPath, jucePath string) error {
 	file, err := os.ReadFile(jucerFilePath)
-	if err != nil {return fmt.Errorf("[Mosac] Error occurred while reading Jucer project file: %w", err)}
+	if err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while reading Jucer project file: %w", err)
+	}
 
 	modulesPath, err := filepath.Rel(projectPath, filepath.Join(jucePath, "modules"))
-	if err != nil {return fmt.Errorf("[Mosac] Error occurred while resolving JUCE modules path: %w", err)}
+	if err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while resolving JUCE modules path: %w", err)
+	}
+
 	buildToolsPath, err := filepath.Rel(projectPath, filepath.Join(jucePath, "extras", "Build"))
-	if err != nil {return fmt.Errorf("[Mosac] Error occurred while resolving JUCE build tools path: %w", err)}
+	if err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while resolving JUCE build tools path: %w", err)
+	}
 
 	modulesPath = filepath.ToSlash(modulesPath)
 	buildToolsPath = filepath.ToSlash(buildToolsPath)
@@ -274,10 +326,14 @@ func updateJucerModulePaths(jucerFilePath, projectPath, jucePath string) error {
 		}
 	}
 
-	if !modified {return nil}
+	if !modified {
+		return nil
+	}
 
 	newContent := strings.Join(lines, "\n")
-	if err = os.WriteFile(jucerFilePath, []byte(newContent), 0o644); err != nil {return fmt.Errorf("[Mosac] Error occurred while writing Jucer project file: %w", err)}
+	if err = os.WriteFile(jucerFilePath, []byte(newContent), 0o644); err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while writing Jucer project file: %w", err)
+	}
 
 	return nil
 }

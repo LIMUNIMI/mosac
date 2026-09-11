@@ -16,15 +16,14 @@ type GitHubRelease struct {
 }
 
 // Update downloads and installs the specified JUCE version into ~/.mosac/juce/<major_version>
-func Update(version string) {
+func Update(version string) error {
 	fmt.Printf("    Checking requested JUCE version: %s\n", version)
 
 	// resolve "latest" by querying the GitHub API
 	if version == "latest" {
 		latestTag, err := getLatestJuceVersion()
 		if err != nil {
-			fmt.Printf("Error fetching latest version from GitHub: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error fetching latest version from GitHub: %w", err)
 		}
 		version = latestTag
 		fmt.Printf("    Latest version resolved to: %s\n", version)
@@ -33,16 +32,14 @@ func Update(version string) {
 	// determine the Major version (e.g., "8.0.4" -> "8")
 	parts := strings.Split(version, ".")
 	if len(parts) == 0 {
-		fmt.Println("Error: Invalid version format.")
-		os.Exit(1)
+		return fmt.Errorf("invalid version format")
 	}
 	majorVersion := parts[0]
 
 	// prepare destination paths
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		fmt.Printf("Error getting user home directory: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("error getting user home directory: %w", err)
 	}
 	mosacJuceDir := filepath.Join(homeDir, ".mosac", "juce", majorVersion)
 
@@ -61,8 +58,7 @@ func Update(version string) {
 	tempZipPath := filepath.Join(os.TempDir(), fmt.Sprintf("juce-%s.zip", version))
 	err = downloadFile(tempZipPath, zipURL)
 	if err != nil {
-		fmt.Printf("Error downloading JUCE: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("error downloading JUCE: %w", err)
 	}
 	defer os.Remove(tempZipPath)
 
@@ -70,8 +66,7 @@ func Update(version string) {
 	fmt.Println("    Extracting framework...")
 	err = unzipAndStripRoot(tempZipPath, mosacJuceDir)
 	if err != nil {
-		fmt.Printf("Error extracting JUCE: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("error extracting JUCE: %w", err)
 	}
 
 	// write the .version file to keep track of the exact installed version
@@ -82,6 +77,7 @@ func Update(version string) {
 	}
 
 	fmt.Printf("    Success! JUCE %s installed in %s\n", version, mosacJuceDir)
+	return nil
 }
 
 // contacts GitHub to find the latest JUCE release tag

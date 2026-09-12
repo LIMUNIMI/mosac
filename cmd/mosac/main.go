@@ -148,8 +148,8 @@ func runBuildCmd(args []string) int {
 	opPtr := buildCmd.String("OP", "", "output path for the build(s)")
 
 	buildTypePtr := buildCmd.String("c", "Release", "build configuration (Debug or Release)")
-	sysPtr := buildCmd.String("sys", "MacOS,Linux,Windows", "comma-separated target system (MacOS, Linux, Windows)")
-	formatsPtr := buildCmd.String("formats", "Standalone,VST3,AU,LV2,Unity,AAX", "comma-separated build formats (VST3,AU,LV2,Standalone,Unity,AAX)")
+	sysPtr := buildCmd.String("sys", "MacOS,Linux,Windows", "comma-separated target system")
+	formatsPtr := buildCmd.String("formats", "Standalone,VST3,AU,LV2,Unity,AAX", "comma-separated build formats")
 	newPtr := buildCmd.Bool("new", false, "perform a clean build (removes build/ and Builds/ folders)")
 
 	if err := buildCmd.Parse(args); err != nil {
@@ -213,7 +213,7 @@ func runBuildCmd(args []string) int {
 // HELP MENU
 // -------------------------------------------------------------
 func printRootHelp() {
-	fmt.Println(`MOSAC - JUCE Audio Plugin Build Automator
+	fmt.Println(`MOSAC - Multi OS Audio Compiler
 
 Usage:
   mosac <command> [options]

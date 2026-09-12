@@ -20,6 +20,17 @@ func projucerExecutablePath(projucerAppPath string) string {
 	return filepath.Join(filepath.Dir(projucerAppPath), "Projucer")
 }
 
+func IsJUCEVersionLessThan8(jucePath string) bool {
+	re := regexp.MustCompile(`JUCE-?([0-9]+)`)
+	matches := re.FindStringSubmatch(jucePath)
+	if len(matches) != 2 {
+		return false
+	}
+
+	version, err := strconv.Atoi(matches[1])
+	return err == nil && version < 8
+}
+
 // checks if Projucer is built in the given JUCE directory. If not, it builds Projucer and returns its path.
 func CheckIfProjucerIsAlreadyBuilt(jucePath string) (string, error) {
 	projucerAppPath, err := filepath.Abs(filepath.Join(jucePath, "extras", "Projucer", "Builds", "MacOSX", "build", "Release", "Projucer.app"))
@@ -149,7 +160,7 @@ func ResaveProject(projectPath, jucePath, projucerPath string, pluginFormats []s
 }
 
 // normalizes the Jucer project before CMake generation. Projucer is only available for resaving on a macOS host.
-func PrepareProject(projectPath, jucePath string, pluginFormats []string) error {
+func PrepareProject(projectPath, jucePath string, pluginFormats []string, skipAAX bool) error {
 	jucerFilePath, err := getJucerFilePath(projectPath)
 	if err != nil {
 		return fmt.Errorf("[ProjucerManager] error occurred while resolving Jucer project file: %w", err)
@@ -164,7 +175,7 @@ func PrepareProject(projectPath, jucePath string, pluginFormats []string) error 
 	if err := updateJucerModulePaths(jucerFilePath, projectPath, jucePath); err != nil {
 		return fmt.Errorf("[ProjucerManager] error occurred while updating Jucer module paths: %w", err)
 	}
-	if err := updateJucerPluginFormats(jucerFilePath, pluginFormats); err != nil {
+	if err := updateJucerPluginFormats(jucerFilePath, pluginFormats, skipAAX); err != nil {
 		return fmt.Errorf("[ProjucerManager] error occurred while updating Jucer plugin formats: %w", err)
 	}
 
@@ -177,10 +188,10 @@ func PrepareProject(projectPath, jucePath string, pluginFormats []string) error 
 		return err
 	}
 
-	return ResaveProject(projectPath, jucePath, projucerPath, pluginFormats, false)
+	return ResaveProject(projectPath, jucePath, projucerPath, pluginFormats, skipAAX)
 }
 
-func updateJucerPluginFormats(jucerFilePath string, pluginFormats []string) error {
+func updateJucerPluginFormats(jucerFilePath string, pluginFormats []string, skipAAX bool) error {
 	projucerFormats := make([]string, 0, len(pluginFormats))
 	for _, format := range pluginFormats {
 		format = strings.TrimSpace(format)
@@ -196,6 +207,9 @@ func updateJucerPluginFormats(jucerFilePath string, pluginFormats []string) erro
 		case "Unity":
 			projucerFormats = append(projucerFormats, "buildUnity")
 		case "AAX":
+			if skipAAX {
+				continue
+			}
 			projucerFormats = append(projucerFormats, "buildAAX")
 		default:
 			return fmt.Errorf("invalid plugin format: %s", format)

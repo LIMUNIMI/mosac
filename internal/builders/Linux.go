@@ -2,6 +2,7 @@ package builders
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"mosac/internal/utils"
 
@@ -46,6 +47,9 @@ func (b *LinuxBuilder) Build() error {
 	targetStage := "go_juce_builder_linux"
 
 	fmt.Println("        [LinuxBuilder] Preparing environment...")
+	if err := utils.RemoveAAXLabelFromCMakeLists(filepath.Join(b.ProjectPath, "CMakeLists.txt")); err != nil {
+		return fmt.Errorf("[LinuxBuilder] Error occurred while removing AAX from CMakeLists.txt: %w", err)
+	}
 
 	binds := []string{
 		fmt.Sprintf("%s:/opt", b.JucePath),

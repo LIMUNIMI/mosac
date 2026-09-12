@@ -9,6 +9,30 @@ import (
 	"strings"
 )
 
+func RemoveAAXLabelFromCMakeLists(cmakeFilePath string) error {
+	cmakeLists, err := os.ReadFile(cmakeFilePath)
+	if err != nil {
+		return fmt.Errorf("error reading CMakeLists.txt: %w", err)
+	}
+
+	lines := strings.Split(string(cmakeLists), "\n")
+	modified := false
+	for i := range lines {
+		if strings.Contains(lines[i], "FORMATS") && strings.Contains(lines[i], "AAX") {
+			lines[i] = strings.Replace(lines[i], "AAX", "", 1)
+			modified = true
+		}
+	}
+
+	if !modified {
+		return nil
+	}
+
+	if err := os.WriteFile(cmakeFilePath, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
+		return fmt.Errorf("error writing CMakeLists.txt: %w", err)
+	}
+	return nil
+}
 
 // returns the absolute path of the .jucer file in the specified project directory, or an error if not found or if multiple .jucer files are present.
 func getJucerFilePath(ProjectPath string) (string, error) {
@@ -154,7 +178,9 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 	proj.PluginManufacturerCode = getString(raw.PluginManufacturerCode, "LIM!")
 	proj.PluginManufacturer = getString(raw.PluginManufacturer, "LIM")
 	pluginCode := getString(raw.PluginCode, "Lim0")
-	if pluginCode == "Lim0" && raw.ID != nil {pluginCode = getPluginCodeFromUID(*raw.ID)}
+	if pluginCode == "Lim0" && raw.ID != nil {
+		pluginCode = getPluginCodeFromUID(*raw.ID)
+	}
 	proj.PluginCode = pluginCode
 	proj.PluginDesc = getString(raw.PluginDesc, "insert here italian plugin description")
 	proj.PluginName = getString(raw.PluginName, proj.Name)
@@ -166,7 +192,9 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 	proj.CompanyName = strings.ReplaceAll(proj.CompanyName, " ", "-")
 	proj.Name = strings.ReplaceAll(proj.Name, " ", "-")
 	proj.PluginName = strings.ReplaceAll(proj.PluginName, " ", "-")
-	if !strings.HasPrefix(proj.CompanyWebsite, "https://") {proj.CompanyWebsite = "https://" + proj.CompanyWebsite}
+	if !strings.HasPrefix(proj.CompanyWebsite, "https://") {
+		proj.CompanyWebsite = "https://" + proj.CompanyWebsite
+	}
 
 	// pluginFormats
 	if len(pluginFormats) > 0 {
@@ -318,8 +346,6 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 
 	return proj, nil
 }
-
-
 
 func generateCMakeLists(proj *PluginProject, cmakeOutputPath string) error {
 	cmakeOutDir := filepath.Dir(cmakeOutputPath)
@@ -509,7 +535,7 @@ endforeach()
 	$<$<CXX_COMPILER_ID:GNU>:-fpermissive>
 	$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-w>
 	$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-Wno-deprecated-declarations>
-)`,  proj.PluginName))
+)`, proj.PluginName))
 
 	_, err = file.WriteString(b.String())
 	return err
@@ -520,14 +546,20 @@ endforeach()
 // Returns a pointer to the parsed PluginProject struct and an error if any.
 func Jucer2Cmake(ProjectPath string, PluginFormats []string) (*PluginProject, error) {
 	filePath, err := getJucerFilePath(ProjectPath)
-	if err != nil {return nil, err}
+	if err != nil {
+		return nil, err
+	}
 
 	proj, err := parseJucerFile(filePath, PluginFormats)
-	if err != nil {return nil, err}
+	if err != nil {
+		return nil, err
+	}
 
 	cmakeOutputPath := filepath.Join(ProjectPath, "CMakeLists.txt")
 	err = generateCMakeLists(proj, cmakeOutputPath)
-	if err != nil {return nil, err}
+	if err != nil {
+		return nil, err
+	}
 
 	return proj, nil
 }

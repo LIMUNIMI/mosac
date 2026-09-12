@@ -29,49 +29,15 @@ var (
 	}
 )
 
-// checks if the provided list of arguments contains only valid arguments and no duplicates
-func containsValidArg(list []string, validArgs map[string]bool) bool {
-	seen := make(map[string]bool)
-
-	for _, arg := range list {
-		arg = strings.TrimSpace(arg)
-		if !validArgs[arg] {
-			return false
-		}
-		if seen[arg] {
-			return false
-		}
-		seen[arg] = true
-	}
-
-	return len(list) > 0
-}
-
 // builds the plugin project for the specified OS and plugin formats
 func BuildPlugin(projDir string, juceDir string, outputDir string, buildType string, buildForOS, pluginFormats []string, cleanBuild bool) error {
-	if projDir == "" || outputDir == "" {
-		fmt.Println("[MOSAC] Please provide the required paths for the JUCE project and output directory.")
-		return fmt.Errorf("[MOSAC] Please provide the required paths for the JUCE project and output directory.")
-	}
-	if buildType != "Debug" && buildType != "Release" {
-		fmt.Println("[MOSAC] Invalid build type. Please specify either 'Debug' or 'Release'.")
-		return fmt.Errorf("[MOSAC] Invalid build type. Please specify either 'Debug' or 'Release'.")
-	}
 	if len(buildForOS) == 0 {
 		fmt.Println("[MOSAC] Please specify at least one target OS.")
 		return fmt.Errorf("[MOSAC] Please specify at least one target OS.")
 	}
-	if !containsValidArg(buildForOS, validOS) {
-		fmt.Println("[MOSAC] Please specify at least one valid OS (MacOS, Linux, or Windows).")
-		return fmt.Errorf("[MOSAC] Please specify at least one valid OS (MacOS, Linux, or Windows).")
-	}
 	if len(pluginFormats) == 0 {
 		fmt.Println("[MOSAC] Please specify at least one plugin format.")
 		return fmt.Errorf("[MOSAC] Please specify at least one plugin format.")
-	}
-	if !containsValidArg(pluginFormats, validFormats) {
-		fmt.Println("[MOSAC] Please specify at least one valid plugin format (Standalone, LV2, VST3, AU, Unity, or AAX).")
-		return fmt.Errorf("[MOSAC] Please specify at least one valid plugin format (Standalone, LV2, VST3, AU, Unity, or AAX).")
 	}
 	for index, format := range pluginFormats {
 		pluginFormats[index] = strings.TrimSpace(format)
@@ -123,9 +89,24 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 		return fmt.Errorf("[BuildPlugin] JUCE directory is invalid: %s", juceDir)
 	}
 
+	skipAAX := utils.IsJUCEVersionLessThan8(juceDir)
+	if skipAAX {
+		filteredFormats := pluginFormats[:0]
+		for _, format := range pluginFormats {
+			if format != "AAX" {
+				filteredFormats = append(filteredFormats, format)
+			}
+		}
+		pluginFormats = filteredFormats
+		if len(pluginFormats) == 0 {
+			return fmt.Errorf("[BuildPlugin] AAX requires JUCE 8 or newer")
+		}
+		fmt.Println("[BuildPlugin] AAX format requires JUCE 8 or newer. Skipping AAX.")
+	}
+
 	fmt.Printf("Building project at: %s\nSelected JUCE directory: %s\nOutput directory: %s\nBuild type: %s\nTarget OS: %v\nPlugin formats: %v\n\n--- START ---\n", projDir, juceDir, outputDir, buildType, buildForOS, pluginFormats)
 
-	if err := utils.PrepareProject(projDir, juceDir, pluginFormats); err != nil {
+	if err := utils.PrepareProject(projDir, juceDir, pluginFormats, skipAAX); err != nil {
 		buildErrors = append(buildErrors, fmt.Errorf("[BuildPlugin] Error preparing Jucer project: %w", err))
 		goto End
 	}

@@ -2,8 +2,7 @@ package builders
 
 import (
 	"fmt"
-	"os"
-	"strings"
+	"path/filepath"
 
 	"mosac/internal/utils"
 
@@ -53,44 +52,13 @@ func NewWindowsBuilder(jucePath, projectPath, buildConfiguration string) (*Windo
 	}, nil
 }
 
-// removes AAX label from CMakeLists.txt file to avoid building it. (generates error on Windows cross-compilation)
-func removeAAXLabelFromCMakeLists(cmakeFilePath string) error {
-	cmakelists, err := os.ReadFile(cmakeFilePath)
-	if err != nil {
-		return fmt.Errorf("[WindowsBuilder] Error occurred while reading CMakeLists.txt file: %w", err)
-	}
-
-	lines := strings.Split(string(cmakelists), "\n")
-	modified := false
-
-	// if file contains AAX label, remove it
-	for i := range lines {
-		if strings.Contains(lines[i], "FORMATS") && strings.Contains(lines[i], "AAX") {
-			lines[i] = strings.Replace(lines[i], "AAX", "", 1)
-			fmt.Println("        [WindowsBuilder] Removed AAX label from CMakeLists.txt file.")
-			modified = true
-		}
-	}
-
-	// if modified, write the modified content back to the file
-	if modified {
-		newCmakeLists := strings.Join(lines, "\n")
-		err = os.WriteFile(cmakeFilePath, []byte(newCmakeLists), 0644)
-		if err != nil {
-			return fmt.Errorf("[WindowsBuilder] Error occurred while writing modified CMakeLists.txt file: %w", err)
-		}
-	}
-
-	return nil
-}
-
 func (b *WindowsBuilder) Build() error {
 	imageName := "juce-builder:windows"
 	targetStage := "go_juce_builder_windows"
 
 	fmt.Println("        [WindowsBuilder] Preparing environment...")
 
-	err := removeAAXLabelFromCMakeLists(fmt.Sprintf("%s/CMakeLists.txt", b.ProjectPath))
+	err := utils.RemoveAAXLabelFromCMakeLists(filepath.Join(b.ProjectPath, "CMakeLists.txt"))
 	if err != nil {
 		return err
 	}

@@ -5,31 +5,31 @@ import (
 	"os"
 	"strings"
 
-	"mosac/utils"
+	"mosac/internal/utils"
 
 	"github.com/docker/docker/client"
 )
 
 type WindowsBuilder struct {
-	JucePath    string
-	ProjectPath string
+	JucePath           string
+	ProjectPath        string
 	BuildConfiguration string
-	
+
 	buildCommand []string
 
-	DockerCli   *client.Client
+	DockerCli *client.Client
 }
-
-
 
 func NewWindowsBuilder(jucePath, projectPath, buildConfiguration string) (*WindowsBuilder, error) {
 	cli, err := utils.StartDocker()
-	if err != nil {return nil, err}
+	if err != nil {
+		return nil, err
+	}
 
 	return &WindowsBuilder{
-		JucePath:     jucePath,
-		ProjectPath:  projectPath,
-		DockerCli:    cli,
+		JucePath:    jucePath,
+		ProjectPath: projectPath,
+		DockerCli:   cli,
 
 		buildCommand: []string{"sh", "-c",
 			fmt.Sprintf(
@@ -49,24 +49,25 @@ func NewWindowsBuilder(jucePath, projectPath, buildConfiguration string) (*Windo
 					"-DCMAKE_RC_COMPILER=llvm-rc "+
 					"-DCMAKE_C_FLAGS=\"$CL_FLAGS\" "+
 					"-DCMAKE_CXX_FLAGS=\"$CL_FLAGS\" && "+
-					"cmake --build /workspace/build/Windows/%[1]s -j $(nproc --ignore=1)",buildConfiguration)},
+					"cmake --build /workspace/build/Windows/%[1]s -j $(nproc --ignore=1)", buildConfiguration)},
 	}, nil
 }
-
 
 // removes AAX label from CMakeLists.txt file to avoid building it. (generates error on Windows cross-compilation)
 func removeAAXLabelFromCMakeLists(cmakeFilePath string) error {
 	cmakelists, err := os.ReadFile(cmakeFilePath)
-	if err != nil {return fmt.Errorf("[WindowsBuilder] Error occurred while reading CMakeLists.txt file: %w", err)}
+	if err != nil {
+		return fmt.Errorf("[WindowsBuilder] Error occurred while reading CMakeLists.txt file: %w", err)
+	}
 
 	lines := strings.Split(string(cmakelists), "\n")
 	modified := false
 
 	// if file contains AAX label, remove it
 	for i := range lines {
-		if strings.Contains(lines[i], "FORMATS") && strings.Contains(lines[i], "AAX"){
+		if strings.Contains(lines[i], "FORMATS") && strings.Contains(lines[i], "AAX") {
 			lines[i] = strings.Replace(lines[i], "AAX", "", 1)
-			fmt.Println("[WindowsBuilder] Removed AAX label from CMakeLists.txt file.")
+			fmt.Println("        [WindowsBuilder] Removed AAX label from CMakeLists.txt file.")
 			modified = true
 		}
 	}
@@ -75,21 +76,24 @@ func removeAAXLabelFromCMakeLists(cmakeFilePath string) error {
 	if modified {
 		newCmakeLists := strings.Join(lines, "\n")
 		err = os.WriteFile(cmakeFilePath, []byte(newCmakeLists), 0644)
-		if err != nil {return fmt.Errorf("[WindowsBuilder] Error occurred while writing modified CMakeLists.txt file: %w", err)}
+		if err != nil {
+			return fmt.Errorf("[WindowsBuilder] Error occurred while writing modified CMakeLists.txt file: %w", err)
+		}
 	}
 
 	return nil
 }
 
-
 func (b *WindowsBuilder) Build() error {
 	imageName := "juce-builder:windows"
 	targetStage := "go_juce_builder_windows"
 
-	fmt.Println("[WindowsBuilder] Preparing environment...")
+	fmt.Println("        [WindowsBuilder] Preparing environment...")
 
 	err := removeAAXLabelFromCMakeLists(fmt.Sprintf("%s/CMakeLists.txt", b.ProjectPath))
-	if err != nil {return err}
+	if err != nil {
+		return err
+	}
 
 	binds := []string{
 		fmt.Sprintf("%s:/opt", b.JucePath),
@@ -97,13 +101,15 @@ func (b *WindowsBuilder) Build() error {
 	}
 
 	err = utils.RunContainer(b.DockerCli, imageName, targetStage, b.buildCommand, binds)
-	if err != nil {return err}
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
-
-
 func (b *WindowsBuilder) Close() {
-	if b.DockerCli != nil {b.DockerCli.Close()}
+	if b.DockerCli != nil {
+		b.DockerCli.Close()
+	}
 }

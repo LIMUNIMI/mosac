@@ -1,4 +1,4 @@
-package utils
+package project
 
 import (
 	"bufio"
@@ -22,7 +22,9 @@ func parseCommaSeparatedLine(line string) []string {
 
 	for _, part := range parts {
 		part = strings.TrimSpace(part)
-		if part != "" {values = append(values, part)}
+		if part != "" {
+			values = append(values, part)
+		}
 	}
 
 	return values
@@ -32,8 +34,12 @@ func parseJuceVersion(line string) (string, error) {
 	line = strings.ToUpper(strings.TrimSpace(line))
 	line = strings.ReplaceAll(line, " ", "")
 
-	if line == "JUCE7" || line == "JUCE-7" {return "JUCE7", nil}
-	if line == "JUCE8" || line == "JUCE-8" {return "JUCE8", nil}
+	if line == "JUCE7" || line == "JUCE-7" {
+		return "JUCE7", nil
+	}
+	if line == "JUCE8" || line == "JUCE-8" {
+		return "JUCE8", nil
+	}
 
 	return "", fmt.Errorf("[MosacConfig] invalid JUCE version in mosac.conf: %s", line)
 }
@@ -42,24 +48,38 @@ func LoadMosacConfig(projectDir string) (*MosacConfig, bool, error) {
 	configPath := filepath.Join(projectDir, "mosac.conf")
 	file, err := os.Open(configPath)
 	if err != nil {
-		if os.IsNotExist(err) {return nil, false, nil}
+		if os.IsNotExist(err) {
+			return nil, false, nil
+		}
 		return nil, false, fmt.Errorf("[MosacConfig] error while opening %s: %w", configPath, err)
 	}
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 	lines := make([]string, 0, 5)
-	for scanner.Scan() {lines = append(lines, strings.TrimSpace(scanner.Text()))}
+	for scanner.Scan() {
+		lines = append(lines, strings.TrimSpace(scanner.Text()))
+	}
 
-	if err := scanner.Err(); err != nil {return nil, true, fmt.Errorf("[MosacConfig] error while reading %s: %w", configPath, err)}
+	if err := scanner.Err(); err != nil {
+		return nil, true, fmt.Errorf("[MosacConfig] error while reading %s: %w", configPath, err)
+	}
 
-	if len(lines) < 4 {return nil, true, fmt.Errorf("[MosacConfig] invalid mosac.conf: expected 4 lines, got %d", len(lines))}
+	if len(lines) < 4 {
+		return nil, true, fmt.Errorf("[MosacConfig] invalid mosac.conf: expected 4 lines, got %d", len(lines))
+	}
 
 	juceVersion, err := parseJuceVersion(lines[0])
-	if err != nil {return nil, true, err}
+	if err != nil {
+		return nil, true, err
+	}
 
 	aux := ""
-	if len(lines) == 5 {if lines[4] != "" {aux = lines[4]}}
+	if len(lines) == 5 {
+		if lines[4] != "" {
+			aux = lines[4]
+		}
+	}
 
 	return &MosacConfig{
 		JuceVersion: juceVersion,
@@ -71,17 +91,26 @@ func LoadMosacConfig(projectDir string) (*MosacConfig, bool, error) {
 }
 
 func ResolveJuceDirFromVersion(version string) (string, error) {
-	candidates := []string{}
-	
-	cwd, err := os.Getwd()
-	if err == nil {candidates = append(candidates, filepath.Join(cwd, version))}
-	
-	exePath, err := os.Executable()
-	if err == nil {candidates = append(candidates, filepath.Join(filepath.Dir(exePath), version))}
-
-	for _, candidate := range candidates {
-		if info, err := os.Stat(candidate); err == nil && info.IsDir() {return candidate, nil}
+	version = strings.TrimSpace(strings.ToUpper(version))
+	version = strings.TrimPrefix(version, "JUCE-")
+	version = strings.TrimPrefix(version, "JUCE")
+	if version != "7" && version != "8" {
+		return "", fmt.Errorf("[MOSAC] unsupported JUCE version: %s", version)
 	}
 
-	return "", fmt.Errorf("[MOSAC] could not resolve JUCE directory for %s. Expected a sibling directory named %s", version, version)
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("[MOSAC] could not get user home directory: %w", err)
+	}
+
+	juceDir := filepath.Join(homeDir, ".mosac", "juce", version)
+	info, err := os.Stat(juceDir)
+	if err != nil {
+		return "", fmt.Errorf("[MOSAC] could not resolve JUCE directory for version %s at %s: %w", version, juceDir, err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("[MOSAC] JUCE path is not a directory: %s", juceDir)
+	}
+
+	return filepath.Abs(juceDir)
 }

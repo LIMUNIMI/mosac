@@ -148,6 +148,83 @@ func ResaveProject(projectPath, jucePath, projucerPath string, pluginFormats []s
 	return nil
 }
 
+// normalizes the Jucer project before CMake generation. Projucer is only available for resaving on a macOS host.
+func PrepareProject(projectPath, jucePath string, pluginFormats []string) error {
+	jucerFilePath, err := getJucerFilePath(projectPath)
+	if err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while resolving Jucer project file: %w", err)
+	}
+
+	if err := updateJucerFallbackMetadata(jucerFilePath); err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while normalizing Jucer metadata: %w", err)
+	}
+	if err := updateJucerModuleUseGlobalPath(jucerFilePath); err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while updating Jucer module usage: %w", err)
+	}
+	if err := updateJucerModulePaths(jucerFilePath, projectPath, jucePath); err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while updating Jucer module paths: %w", err)
+	}
+	if err := updateJucerPluginFormats(jucerFilePath, pluginFormats); err != nil {
+		return fmt.Errorf("[ProjucerManager] error occurred while updating Jucer plugin formats: %w", err)
+	}
+
+	if runtime.GOOS != "darwin" {
+		return nil
+	}
+
+	projucerPath, err := CheckIfProjucerIsAlreadyBuilt(jucePath)
+	if err != nil {
+		return err
+	}
+
+	return ResaveProject(projectPath, jucePath, projucerPath, pluginFormats, false)
+}
+
+func updateJucerPluginFormats(jucerFilePath string, pluginFormats []string) error {
+	projucerFormats := make([]string, 0, len(pluginFormats))
+	for _, format := range pluginFormats {
+		format = strings.TrimSpace(format)
+		switch format {
+		case "Standalone":
+			projucerFormats = append(projucerFormats, "buildStandalone")
+		case "LV2":
+			projucerFormats = append(projucerFormats, "buildLV2")
+		case "VST3":
+			projucerFormats = append(projucerFormats, "buildVST3")
+		case "AU":
+			projucerFormats = append(projucerFormats, "buildAU")
+		case "Unity":
+			projucerFormats = append(projucerFormats, "buildUnity")
+		case "AAX":
+			projucerFormats = append(projucerFormats, "buildAAX")
+		default:
+			return fmt.Errorf("invalid plugin format: %s", format)
+		}
+	}
+
+	content, err := os.ReadFile(jucerFilePath)
+	if err != nil {
+		return fmt.Errorf("error reading Jucer project file: %w", err)
+	}
+
+	updatedContent, err := replaceRootXMLAttribute(
+		string(content),
+		"pluginFormats",
+		strings.Join(projucerFormats, ","),
+	)
+	if err != nil {
+		return err
+	}
+	if updatedContent == string(content) {
+		return nil
+	}
+
+	if err := os.WriteFile(jucerFilePath, []byte(updatedContent), 0o644); err != nil {
+		return fmt.Errorf("error writing Jucer project file: %w", err)
+	}
+	return nil
+}
+
 func updateJucerFallbackMetadata(jucerFilePath string) error {
 	file, err := os.Open(jucerFilePath)
 	if err != nil {

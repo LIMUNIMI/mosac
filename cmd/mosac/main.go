@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"mosac/internal/batchMaker"
+	"mosac/internal/builders"
 	"mosac/internal/health"
 	"mosac/internal/juce"
 )
@@ -187,8 +188,10 @@ func runBuildCmd(args []string) int {
 			return 1
 		}
 
-		// TODO: implement batch build logic
-		BuildBatch(*batchFilePtr, *opPtr, *newPtr)
+		if err := builders.BuildBatch(*batchFilePtr, *opPtr, *newPtr); err != nil {
+			fmt.Printf("Error building batch: %v\n", err)
+			return 1
+		}
 
 		return 0
 	}
@@ -200,8 +203,9 @@ func runBuildCmd(args []string) int {
 			return 1
 		}
 
-		// TODO: implement single project compilation logic
-		BuildPlugin(*ppPtr, *jpPtr, *opPtr, *buildTypePtr, *sysPtr, *formatsPtr, *newPtr)
+		if err := builders.BuildPlugin(*ppPtr, *jpPtr, *opPtr, *buildTypePtr, strings.Split(*sysPtr, ","), strings.Split(*formatsPtr, ","), *newPtr); err != nil {
+			return 1
+		}
 
 		return 0
 	}
@@ -290,10 +294,4 @@ func IsFlagValid(flagVal *string, allowed []string) bool {
 		}
 	}
 	return true
-}
-
-// provvisory functions for build logic, to be implemented in the future
-func BuildBatch(batchFilePath string, outputPath string, new bool) {}
-
-func BuildPlugin(projectPath string, jucePath string, outputPath string, buildType string, sys string, formats string, new bool) {
 }

@@ -2,13 +2,13 @@ package builders
 
 import (
 	"fmt"
-	"regexp"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 
-	"mosac/utils"
+	"mosac/internal/utils"
 )
 
 type MacOSBuilder struct {
@@ -19,29 +19,26 @@ type MacOSBuilder struct {
 	pluginFormats    []string
 }
 
-
-
 func checkIfJUCEVersionIsLessThan8(jucePath string) bool {
 	re := regexp.MustCompile(`JUCE-?([0-9]+)`)
 	matches := re.FindStringSubmatch(jucePath)
-	if len(matches) != 2 {return false}
+	if len(matches) != 2 {
+		return false
+	}
 
 	version, err := strconv.Atoi(matches[1])
-	if err != nil {return false}
+	if err != nil {
+		return false
+	}
 
 	return version <= 7
 }
 
-
-
 func NewMacOSBuilder(jucePath, projectPath, pluginName, buildConfiguration string, pluginFormats []string) (*MacOSBuilder, error) {
 	projucerPath, err := utils.CheckIfProjucerIsAlreadyBuilt(jucePath)
-	if err != nil {return nil, err}
-
-	skipAAX := checkIfJUCEVersionIsLessThan8(jucePath)
-
-	err = utils.ResaveProject(projectPath, jucePath, projucerPath, pluginFormats, skipAAX)
-	if err != nil {return nil, err}
+	if err != nil {
+		return nil, err
+	}
 
 	xcodeProjectPath := filepath.Join(projectPath, "Builds", "MacOSX", pluginName+".xcodeproj")
 
@@ -54,17 +51,18 @@ func NewMacOSBuilder(jucePath, projectPath, pluginName, buildConfiguration strin
 	}, nil
 }
 
-
 func (b *MacOSBuilder) Build() error {
 	cmd := exec.Command(b.buildCommand[0], b.buildCommand[1:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	fmt.Printf("[MacOSBuilder] Building plugin using Projucer at: %s\n", b.projucerPath)
-	fmt.Printf("[MacOSBuilder] Building plugin using Xcode project at: %s\n", b.xcodeProjectPath)
+	fmt.Printf("        [MacOSBuilder] Building plugin using Projucer at: %s\n", b.projucerPath)
+	fmt.Printf("        [MacOSBuilder] Building plugin using Xcode project at: %s\n", b.xcodeProjectPath)
 
 	err := cmd.Run()
-	if err != nil {return fmt.Errorf("[MacOSBuilder] Error occurred while building plugin: %w", err)}
+	if err != nil {
+		return fmt.Errorf("[MacOSBuilder] Error occurred while building plugin: %w", err)
+	}
 
 	return nil
 }

@@ -67,26 +67,22 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 		return err
 	}
 
-	if juceDir != "" {
-		if juceDir == "7" || juceDir == "8" || juceDir == "JUCE7" || juceDir == "JUCE8" {
-			juceDir, err = project.ResolveJuceDirFromVersion(juceDir)
-		} else {
-			juceDir, err = filepath.Abs(juceDir)
-		}
+	if juceDir != "" { // -JP flag is provided
+		juceDir, err = project.ResolveJuceDir(juceDir)
 		if err != nil {
+			fmt.Printf("[BuildPlugin] Error occurred while resolving JUCE directory path: %v\n", err)
 			return fmt.Errorf("[BuildPlugin] Error occurred while resolving JUCE directory path: %w", err)
 		}
-	} else if configFound {
+
+	} else if configFound { // there is mosac.conf file in the project dir
 		juceDir, err = project.ResolveJuceDirFromVersion(mosacConf.JuceVersion)
 		if err != nil {
 			fmt.Printf("[BuildPlugin] Error occurred while resolving JUCE directory from mosac.conf: %v", err)
 			return fmt.Errorf("[BuildPlugin] Error occurred while resolving JUCE directory from mosac.conf: %v\n", err)
 		}
 	} else {
+		fmt.Println("[MOSAC] Please provide the JUCE directory with -JP or add a mosac.conf file in the project directory")
 		return fmt.Errorf("[MOSAC] Please provide the JUCE directory with -JP or add a mosac.conf file in the project directory")
-	}
-	if info, statErr := os.Stat(juceDir); statErr != nil || !info.IsDir() {
-		return fmt.Errorf("[BuildPlugin] JUCE directory is invalid: %s", juceDir)
 	}
 
 	skipAAX := utils.IsJUCEVersionLessThan8(juceDir)

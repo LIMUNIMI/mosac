@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -33,15 +34,15 @@ func parseCommaSeparatedLine(line string) []string {
 func parseJuceVersion(line string) (string, error) {
 	line = strings.ToUpper(strings.TrimSpace(line))
 	line = strings.ReplaceAll(line, " ", "")
+	line = strings.TrimPrefix(line, "JUCE-")
+	line = strings.TrimPrefix(line, "JUCE")
 
-	if line == "JUCE7" || line == "JUCE-7" {
-		return "JUCE7", nil
-	}
-	if line == "JUCE8" || line == "JUCE-8" {
-		return "JUCE8", nil
+	majorVersion, err := strconv.Atoi(line)
+	if err != nil || majorVersion < 1 {
+		return "", fmt.Errorf("[MosacConfig] invalid JUCE version in mosac.conf: %s", line)
 	}
 
-	return "", fmt.Errorf("[MosacConfig] invalid JUCE version in mosac.conf: %s", line)
+	return "JUCE" + strconv.Itoa(majorVersion), nil
 }
 
 func LoadMosacConfig(projectDir string) (*MosacConfig, bool, error) {
@@ -94,9 +95,11 @@ func ResolveJuceDirFromVersion(version string) (string, error) {
 	version = strings.TrimSpace(strings.ToUpper(version))
 	version = strings.TrimPrefix(version, "JUCE-")
 	version = strings.TrimPrefix(version, "JUCE")
-	if version != "7" && version != "8" {
+	majorVersion, err := strconv.Atoi(version)
+	if err != nil || majorVersion < 1 {
 		return "", fmt.Errorf("[MOSAC] unsupported JUCE version: %s", version)
 	}
+	version = strconv.Itoa(majorVersion)
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -113,4 +116,21 @@ func ResolveJuceDirFromVersion(version string) (string, error) {
 	}
 
 	return filepath.Abs(juceDir)
+}
+
+// accepts either an installed JUCE version or an existing directory path.
+func ResolveJuceDir(input string) (string, error) {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return "", fmt.Errorf("[MOSAC] JUCE version or directory path is empty")
+	}
+
+	if info, err := os.Stat(input); err == nil {
+		if !info.IsDir() {
+			return "", fmt.Errorf("[MOSAC] JUCE path is not a directory: %s", input)
+		}
+		return filepath.Abs(input)
+	}
+
+	return ResolveJuceDirFromVersion(input)
 }

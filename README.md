@@ -25,7 +25,7 @@ Supported formats:
 
 Go is not required when using a binary downloaded from the [GitHub Releases](https://github.com/LIMUNIMI/mosac/releases) page. The machine still needs MacOS on Apple Silicon, Docker Desktop and Xcode Command Line Tools for MacOS builds.
 
-Download the archive matching the host platform, extract the `mosac` executable, and make it executable.
+Download `mosac` and make it executable.
 The commands below are the same for a binary built from source and for a release binary. Use `go run path/to/mosac` instead of `./mosac` when running directly from the repository without building an executable.
 
 ## Installation
@@ -58,16 +58,9 @@ update          Download or replace a JUCE installation
 build           Build one project or all projects in a batch file
 ```
 
-For command-specific help:
+For command-specific help write `-h` after every subcommand.
 
-```sh
-./mosac create-batch -h
-./mosac health -h
-./mosac update -h
-./mosac build -h
-```
-
-## JUCE management: `update`
+## JUCE version management: `update`
 
 `update` downloads a JUCE release from GitHub and installs it under `~/.mosac/juce/<major-version>`. If that major version is already installed, it is replaced.
 
@@ -83,7 +76,7 @@ Install a specific release:
 ./mosac update -v 8.0.14
 ```
 
-MOSAC uses the major-version directories `~/.mosac/juce/7` and `~/.mosac/juce/8` when a project or batch file refers to `JUCE7` or `JUCE8`.
+MOSAC uses the major-version directories (example) `~/.mosac/juce/7` and `~/.mosac/juce/8` when a project or batch file refers to `JUCE7` or `JUCE8`.
 
 ## Diagnostics: `health`
 
@@ -193,14 +186,14 @@ author1@example.com,author2@example.com
 https://example.com
 ```
 
-The fifth line, the URL, is optional. The first line accepts `JUCE7`, `JUCE-7`, `JUCEn` or `JUCE-n`.
+The fifth line, the URL, is optional. The first line accepts `JUCEn` or `JUCE-n` (*n* is the major JUCE version).
 
 Example:
 
 ```text
 JUCE-7
 A synthesizer plugin for research and live performance.
-Carlo Ancri, Autor Two
+Carlo Ancri,Autor Two
 carlo@gmail.com,author2@gmail.com
 https://example.com/plugin
 ```

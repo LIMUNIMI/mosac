@@ -100,6 +100,7 @@ func BuildImageFromEmbedded(cli *client.Client, imageName string, targetStage st
 		Tags:       []string{imageName},
 		Dockerfile: "Dockerfile",
 		Remove:     true,
+		ForceRemove: true,
 		Target:     targetStage,
 	}
 

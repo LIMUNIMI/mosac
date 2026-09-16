@@ -5,6 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
   git \
+  apt-utils \
   build-essential \
   cmake \
   ninja-build \
@@ -56,7 +57,7 @@ RUN xwin_version="0.9.0" && \
   xwin_prefix="xwin-$xwin_version-x86_64-unknown-linux-musl" && \
   curl --fail -L https://github.com/Jake-Shadle/xwin/releases/download/$xwin_version/$xwin_prefix.tar.gz | \
   tar -xzv -C /usr/local/bin --strip-components=1 $xwin_prefix/xwin && \
-  xwin --accept-license splat --output /xwin && \
+  xwin --accept-license splat --include-debug-libs --include-debug-symbols --output /xwin && \
   rm -rf .xwin-cache
 
 RUN ln -sf /xwin/sdk/include/um/DbgHelp.h /xwin/sdk/include/um/Dbghelp.h && \
@@ -66,11 +67,25 @@ RUN ln -sf /xwin/sdk/include/um/DbgHelp.h /xwin/sdk/include/um/Dbghelp.h && \
   ln -sf /xwin/sdk/lib/um/x86_64/dcomp.lib /xwin/sdk/lib/um/x86_64/DComp.lib
 
 RUN DXGI_PATH=$(find /xwin -type f -iname "dxgi.h" | head -n 1) && \
-    DXGI_DIR=$(dirname "$DXGI_PATH") && \
-    ln -sf "$DXGI_PATH" "$DXGI_DIR/Dxgi.h"
+  DXGI_DIR=$(dirname "$DXGI_PATH") && \
+  ln -sf "$DXGI_PATH" "$DXGI_DIR/Dxgi.h"
 
 ENV CL_FLAGS="-Wno-unused-command-line-argument -fuse-ld=lld-link /vctoolsdir /xwin/crt /winsdkdir /xwin/sdk"
 ENV CFLAGS_x86_64_pc_windows_msvc="$CL_FLAGS" \
   CXXFLAGS_x86_64_pc_windows_msvc="$CL_FLAGS"
+
+# debug linking
+ENV LDFLAGS="/libpath:/xwin/crt/lib/x86_64 /libpath:/xwin/sdk/lib/um/x86_64 /libpath:/xwin/sdk/lib/ucrt/x86_64"
+ENV LIB="/xwin/crt/lib/x86_64;/xwin/sdk/lib/um/x86_64;/xwin/sdk/lib/ucrt/x86_64"
+
+# symlink for debug .lib files
+RUN cd /xwin && \
+  find . -type f -name "*.lib" | while read -r f; do \
+  dir=$(dirname "$f"); \
+  base=$(basename "$f" .lib); \
+  upper_base=$(echo "$base" | tr '[:lower:]' '[:upper:]'); \
+  if [ ! -f "$dir/$upper_base.lib" ]; then ln -sf "$(basename "$f")" "$dir/$upper_base.lib"; fi; \
+  if [ ! -f "$dir/$upper_base.LIB" ]; then ln -sf "$(basename "$f")" "$dir/$upper_base.LIB"; fi; \
+  done
 
 CMD ["bash", "-c", "echo 'Windows container started.'"]

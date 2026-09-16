@@ -25,6 +25,17 @@ func NewWindowsBuilder(jucePath, projectPath, buildConfiguration string) (*Windo
 		return nil, err
 	}
 
+	msvcRuntime := "MultiThreaded"
+	extraFlags := "-DCMAKE_EXE_LINKER_FLAGS=\"/MANIFEST:NO\" " +
+		"-DCMAKE_SHARED_LINKER_FLAGS=\"/MANIFEST:NO\" " +
+		"-DCMAKE_MODULE_LINKER_FLAGS=\"/MANIFEST:NO\" "
+
+	if buildConfiguration == "Debug" {
+		extraFlags += "-DCMAKE_C_FLAGS_DEBUG=\"-D_DEBUG /MTd /Z7 /Ob0 /Od /RTC1\" " +
+			"-DCMAKE_CXX_FLAGS_DEBUG=\"-D_DEBUG /MTd /Z7 /Ob0 /Od /RTC1\" "
+		msvcRuntime = "MultiThreadedDebug"
+	}
+
 	return &WindowsBuilder{
 		JucePath:    jucePath,
 		ProjectPath: projectPath,
@@ -35,7 +46,7 @@ func NewWindowsBuilder(jucePath, projectPath, buildConfiguration string) (*Windo
 				"export LIB=\"/xwin/crt/lib/x86_64;/xwin/sdk/lib/ucrt/x86_64;/xwin/sdk/lib/um/x86_64\" && "+
 					"export INCLUDE=\"/xwin/crt/include;/xwin/sdk/include/ucrt;/xwin/sdk/include/shared;/xwin/sdk/include/um;/xwin/sdk/include/winrt\" && "+
 					"cmake -S /workspace -G Ninja -B /workspace/build/Windows/%[1]s "+
-					"-DCMAKE_BUILD_TYPE=%[1]s "+
+					"-DCMAKE_BUILD_TYPE=%[1]s "+extraFlags+
 					"-DJUCE_PATH=/opt "+
 					"-DPROJECT_DIR=/workspace "+
 					"-DCMAKE_SYSTEM_NAME=Windows "+
@@ -43,12 +54,12 @@ func NewWindowsBuilder(jucePath, projectPath, buildConfiguration string) (*Windo
 					"-DCMAKE_CXX_COMPILER=clang-cl "+
 					"-DCMAKE_CROSSCOMPILING=ON "+
 					"-DCMAKE_CROSSCOMPILING_EMULATOR=/usr/bin/true "+
-					"-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded "+
+					"-DCMAKE_MSVC_RUNTIME_LIBRARY=%[2]s "+
 					"-DCMAKE_MT=llvm-mt "+
 					"-DCMAKE_RC_COMPILER=llvm-rc "+
 					"-DCMAKE_C_FLAGS=\"$CL_FLAGS\" "+
 					"-DCMAKE_CXX_FLAGS=\"$CL_FLAGS\" && "+
-					"cmake --build /workspace/build/Windows/%[1]s -j $(nproc --ignore=1)", buildConfiguration)},
+					"cmake --build /workspace/build/Windows/%[1]s -j $(nproc --ignore=1)", buildConfiguration, msvcRuntime)},
 	}, nil
 }
 

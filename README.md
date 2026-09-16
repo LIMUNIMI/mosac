@@ -13,7 +13,7 @@ Supported formats:
 
 ## Requirements
 
-### Using the source repository
+#### Using the source repository
 
 - MacOS on Apple Silicon (M1 or newer)
 - Go 1.26.4 or newer
@@ -21,7 +21,7 @@ Supported formats:
 - Xcode Command Line Tools (`xcodebuild`)
 - Internet access for downloading JUCE and building Docker images
 
-### Using a release executable
+#### Using a release executable
 
 Go is not required when using a binary downloaded from the [GitHub Releases](https://github.com/LIMUNIMI/mosac/releases) page. The machine still needs MacOS on Apple Silicon, Docker Desktop and Xcode Command Line Tools for MacOS builds.
 
@@ -33,13 +33,13 @@ The commands below are the same for a binary built from source and for a release
 ### From the repository
 
 ```sh
-git clone https://github.com/LIMUNIMI/mosac.git
-cd mosac
-go mod tidy
-go build -o mosac
+git clone https://github.com/LIMUNIMI/mosac.git \
+cd mosac \
+go mod tidy \
+go build cmd/mosac/main.go -o mosac
 ```
 
-Run the first diagnostic check before compiling a project:
+Run the first diagnostic check before building a project:
 
 ```sh
 ./mosac health

@@ -102,11 +102,6 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 
 	fmt.Printf("Building project at: %s\nSelected JUCE directory: %s\nOutput directory: %s\nBuild type: %s\nTarget OS: %v\nPlugin formats: %v\n\n--- START ---\n", projDir, juceDir, outputDir, buildType, buildForOS, pluginFormats)
 
-	if err := utils.PrepareProject(projDir, juceDir, pluginFormats, skipAAX); err != nil {
-		buildErrors = append(buildErrors, fmt.Errorf("[BuildPlugin] Error preparing Jucer project: %w", err))
-		goto End
-	}
-
 	// create CMakeLists.txt from the prepared Jucer file
 	pluginProject, err = utils.Jucer2Cmake(projDir, pluginFormats)
 	if err != nil {
@@ -129,6 +124,11 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 		if err != nil {
 			return fmt.Errorf("[BuildPlugin] Error occurred while cleaning JuceLibraryCode directory: %w", err)
 		}
+	}
+
+	if err := utils.PrepareProject(projDir, juceDir, pluginFormats, skipAAX); err != nil {
+		buildErrors = append(buildErrors, fmt.Errorf("[BuildPlugin] Error preparing Jucer project: %w", err))
+		goto End
 	}
 
 	if len(pluginFormats) == 1 && pluginFormats[0] == "AAX" {

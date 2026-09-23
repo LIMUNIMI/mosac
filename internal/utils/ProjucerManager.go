@@ -64,7 +64,7 @@ func buildProjucer(juceDir string) error {
 		return fmt.Errorf("[ProjucerManager] error occurred while resolving Projucer Xcode project path: %w", err)
 	}
 
-	buildProjucerCmd := []string{"xcodebuild", "-project", projucerXcodeProj, "-configuration", "Release"}
+	buildProjucerCmd := []string{"xcodebuild", "-project", projucerXcodeProj,	"-configuration", "Release", "MACOSX_DEPLOYMENT_TARGET=12.0"}
 
 	cmd := exec.Command(buildProjucerCmd[0], buildProjucerCmd[1:]...)
 	cmd.Stdout = os.Stdout

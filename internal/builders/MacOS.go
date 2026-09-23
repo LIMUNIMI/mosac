@@ -30,7 +30,7 @@ func NewMacOSBuilder(jucePath, projectPath, pluginName, buildConfiguration strin
 		xcodeProjectPath: xcodeProjectPath,
 		pluginFormats:    pluginFormats,
 
-		buildCommand: []string{"xcodebuild", "-project", xcodeProjectPath, "-configuration", buildConfiguration},
+		buildCommand: []string{"xcodebuild", "-project", xcodeProjectPath, "-configuration", buildConfiguration, "MACOSX_DEPLOYMENT_TARGET=12.0"},
 	}, nil
 }
 

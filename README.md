@@ -16,8 +16,8 @@ Supported formats:
 #### Using the source repository
 
 - MacOS on Apple Silicon (M1 or newer)
-- Go 1.26.4 or newer
-- Docker Desktop
+- [Go 1.26.4](https://go.dev/doc/install) or newer
+- [Docker Desktop](https://docs.docker.com/desktop/setup/install/mac-install/)
 - Xcode Command Line Tools (`xcodebuild`)
 - Internet access for downloading JUCE and building Docker images
 
@@ -36,7 +36,7 @@ The commands below are the same for a binary built from source and for a release
 git clone https://github.com/LIMUNIMI/mosac.git \
 cd mosac \
 go mod tidy \
-go build cmd/mosac/main.go -o mosac
+go build -o mosac cmd/mosac/main.go
 ```
 
 Run the first diagnostic check before building a project:

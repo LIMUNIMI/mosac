@@ -31,9 +31,13 @@ jobs:
 
       - name: Version (from commit message)
         id: extract_version
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          EXTRACTED_VERSION=$(echo "${{ github.event.head_commit.message }}" \vert{} grep -oP 'v\d+\.\d+\.\d+' \vert{}\vert{} echo "v0.0.0-${GITHUB_SHA::7}")
+          EXTRACTED_VERSION=$(printf "%s" "$COMMIT_MSG" | grep -ioP 'v\d+(\.\d+)*' || echo "v0.0.0-${GITHUB_SHA::7}")
           echo "VERSION=$EXTRACTED_VERSION" >> $GITHUB_ENV
+
+          EXTRACTED_VERSION=$(echo "${{ github.event.head_commit.message }}" | grep -oP 'v\d+\.\d+\.\d+' || echo "v0.0.0-${GITHUB_SHA::7}")
 
       - name: MacOS compilation
         env:

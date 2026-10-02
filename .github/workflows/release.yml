@@ -18,7 +18,7 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Configurazione Go env from go.mod
+      - name: Configure Go env from go.mod
         uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'

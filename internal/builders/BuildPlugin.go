@@ -30,7 +30,7 @@ var (
 )
 
 // builds the plugin project for the specified OS and plugin formats
-func BuildPlugin(projDir string, juceDir string, outputDir string, buildType string, buildForOS, pluginFormats []string, cleanBuild bool) error {
+func BuildPlugin(projDir string, juceDir string, outputDir string, buildType string, buildForOS, pluginFormats []string, cleanBuild, simpleOutput bool) error {
 	if len(buildForOS) == 0 {
 		fmt.Println("[MOSAC] Please specify at least one target OS.")
 		return fmt.Errorf("[MOSAC] Please specify at least one target OS.")
@@ -191,7 +191,7 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 	}
 
 	if pluginProject != nil {
-		err = output.OrganizeOutput(pluginProject, mosacConf, projDir, outputDir, buildType, buildForOS, pluginFormats)
+		err = output.OrganizeOutput(pluginProject, mosacConf, projDir, outputDir, buildType, buildForOS, pluginFormats, simpleOutput)
 		if err != nil {
 			return fmt.Errorf("[BuildPlugin] Error occurred while organizing output: %w", err)
 		}
@@ -215,7 +215,7 @@ End:
 }
 
 // builds multiple plugin projects specified in a batch file
-func BuildBatch(batchPath, outputDir string, cleanBuild bool) error {
+func BuildBatch(batchPath, outputDir string, cleanBuild, simpleOutput bool) error {
 	var buildErrors []error
 	file, err := os.Open(batchPath)
 	if err != nil {
@@ -252,7 +252,7 @@ func BuildBatch(batchPath, outputDir string, cleanBuild bool) error {
 
 		fmt.Printf("== %d° Plugin ==========\n", n+1)
 
-		compilationErrors := BuildPlugin(projectPath, jucePath, outputDir, buildType, buildForOS, pluginFormats, cleanBuild)
+		compilationErrors := BuildPlugin(projectPath, jucePath, outputDir, buildType, buildForOS, pluginFormats, cleanBuild, simpleOutput)
 
 		// format single n° plugin error
 		if compilationErrors != nil {

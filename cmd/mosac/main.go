@@ -148,6 +148,8 @@ func runBuildCmd(args []string) int {
 	jpPtr := buildCmd.String("JP", "", "JUCE path")
 	opPtr := buildCmd.String("OP", "", "output path for the build(s)")
 
+	simpleOutPtr := buildCmd.Bool("simple-out", false, "if specified, only the compiled plugin folder + its json will be copied to the output path. otherwise, the build folder, the json report file and the plugin source folder will be copied to the output path in a 'pluginName' folder containing everything.")
+
 	buildTypePtr := buildCmd.String("c", "Release", "build configuration (Debug or Release)")
 	sysPtr := buildCmd.String("sys", "MacOS,Linux,Windows", "comma-separated target system")
 	formatsPtr := buildCmd.String("formats", "Standalone,VST3,AU,LV2,Unity,AAX", "comma-separated build formats")
@@ -188,7 +190,7 @@ func runBuildCmd(args []string) int {
 			return 1
 		}
 
-		if err := builders.BuildBatch(*batchFilePtr, *opPtr, *newPtr); err != nil {
+		if err := builders.BuildBatch(*batchFilePtr, *opPtr, *newPtr, *simpleOutPtr); err != nil {
 			fmt.Printf("Error building batch: %v\n", err)
 			return 1
 		}
@@ -203,7 +205,7 @@ func runBuildCmd(args []string) int {
 			return 1
 		}
 
-		if err := builders.BuildPlugin(*ppPtr, *jpPtr, *opPtr, *buildTypePtr, strings.Split(*sysPtr, ","), strings.Split(*formatsPtr, ","), *newPtr); err != nil {
+		if err := builders.BuildPlugin(*ppPtr, *jpPtr, *opPtr, *buildTypePtr, strings.Split(*sysPtr, ","), strings.Split(*formatsPtr, ","), *newPtr, *simpleOutPtr); err != nil {
 			return 1
 		}
 

@@ -144,7 +144,7 @@ Build the complete batch with:
 ./mosac build -b /home/user/batches/batch.csv -OP /home/user/builds
 ```
 
-`-OP` is required for batch builds. Add `-new` to remove previous build directories before compiling (recommended):
+`-OP` is required for batch builds. Add `-new` to remove previous build directories before compiling (recommended) and/or the `simple-out` flag (see *Building a Single Project* for more informations):
 
 ```sh
 ./mosac build -b /home/user/batches/batch.csv -OP /home/user/builds -new
@@ -245,6 +245,7 @@ Options:
 | `-sys` | Comma-separated target systems | `MacOS,Linux,Windows` |
 | `-formats` | Comma-separated plugin formats | `Standalone,VST3,AU,LV2,Unity,AAX` |
 | `-new` | Remove previous build directories before compiling | `false` |
+| `simple-out` | If specified, only the compiled plugin folder + its json will be copied to the output path. otherwise, the build folder, the json report file and the plugin source folder will be copied to the output path in a 'pluginName' folder containing everything. | `false` |
 
 Examples for individual target systems:
 

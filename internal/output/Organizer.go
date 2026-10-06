@@ -3,6 +3,7 @@ package output
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -138,7 +139,7 @@ func writeInfoToJson(proj *utils.PluginProject, config *project.MosacConfig, out
 }
 
 // copies all available build output to the outputDir and creates a JSON metadata file.
-func OrganizeOutput(proj *utils.PluginProject, config *project.MosacConfig, projDir, outputDir, buildType string, buildForOS, pluginFormats []string) error {
+func OrganizeOutput(proj *utils.PluginProject, config *project.MosacConfig, projDir, outputDir, buildType string, buildForOS, pluginFormats []string, simpleOutput bool) error {
 	contentDir := filepath.Join(outputDir, proj.PluginName)
 	var (
 		err         error
@@ -210,5 +211,108 @@ func OrganizeOutput(proj *utils.PluginProject, config *project.MosacConfig, proj
 	if err := copyDocFiles(projDir, contentDir); err != nil {
 		return err
 	}
+
+	if !simpleOutput {
+		return pack_Compiled_Json_Source(projDir, outputDir, proj.PluginName)
+	}
+
+	return nil
+}
+
+func pack_Compiled_Json_Source(projectPath, outputPath, pluginName string) error {
+	packDir := filepath.Join(outputPath, pluginName+"_pack")
+	sourceDestDir := filepath.Join(packDir, pluginName+"_source")
+
+	compiledSrc := filepath.Join(outputPath, pluginName)
+	compiledDest := filepath.Join(packDir, pluginName)
+
+	jsonSrc := filepath.Join(outputPath, pluginName+".json")
+	jsonDest := filepath.Join(packDir, pluginName+".json")
+
+	if err := os.MkdirAll(packDir, 0755); err != nil {
+		return fmt.Errorf("error while creating directory %s: %w", packDir, err)
+	}
+
+	if err := os.Rename(compiledSrc, compiledDest); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("error while renaming compiled plugin directory: %w", err)
+	}
+	if err := os.Rename(jsonSrc, jsonDest); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("error while renaming JSON file: %w", err)
+	}
+
+	excludedDirs := map[string]bool{
+		"JuceLibraryCode": true,
+		"build":           true,
+		"Builds":          true,
+		".git":						 true,
+	  ".github":				 true,
+		".vscode":				 true,
+	}
+	excludedFiles := map[string]bool{
+		"CMakeLists.txt": true,
+		"mosac.conf":     true,
+		".gitignore":     true,
+		".gitattributes": true,
+	}
+
+	err := filepath.WalkDir(projectPath, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		relPath, err := filepath.Rel(projectPath, path)
+		if err != nil {
+			return err
+		}
+
+		if relPath == "." {
+			return nil
+		}
+
+		targetPath := filepath.Join(sourceDestDir, relPath)
+
+		if d.IsDir() {
+			if excludedDirs[d.Name()] {
+				return filepath.SkipDir
+			}
+			return os.MkdirAll(targetPath, 0755)
+		}
+
+		if excludedFiles[d.Name()] {
+			return nil
+		}
+
+		return copyFilePayload(path, targetPath, d)
+	})
+
+	if err != nil {
+		return fmt.Errorf("errore critico durante il trasferimento del codice sorgente: %w", err)
+	}
+
+	return nil
+}
+
+func copyFilePayload(src, dst string, d os.DirEntry) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	info, err := d.Info()
+	if err != nil {
+		return err
+	}
+
+	destFile, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE|os.O_TRUNC, info.Mode())
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	if _, err := io.Copy(destFile, sourceFile); err != nil {
+		return err
+	}
+
 	return nil
 }

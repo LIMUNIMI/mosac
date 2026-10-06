@@ -1,5 +1,4 @@
 name: Build and Release mosac for MacOS
-# triggers rebuild on <git commit -m "[RELEASE] vn.n.n"> executed on main branch
 
 on:
   push:
@@ -12,7 +11,7 @@ permissions:
 jobs:
   build-and-release:
     if: contains(github.event.head_commit.message, '[RELEASE]')
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
 
     steps:
       - name: Checkout source code
@@ -34,10 +33,8 @@ jobs:
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          EXTRACTED_VERSION=$(printf "%s" "$COMMIT_MSG" | grep -ioP 'v\d+(\.\d+)*' || echo "v0.0.0-${GITHUB_SHA::7}")
+          EXTRACTED_VERSION=$(printf "%s" "$COMMIT_MSG" \vert{} grep -ioP 'v\d+(\.\d+)*' \vert{}\vert{} echo "v0.0.0-${GITHUB_SHA::7}")
           echo "VERSION=$EXTRACTED_VERSION" >> $GITHUB_ENV
-
-          EXTRACTED_VERSION=$(echo "${{ github.event.head_commit.message }}" | grep -oP 'v\d+\.\d+\.\d+' || echo "v0.0.0-${GITHUB_SHA::7}")
 
       - name: MacOS compilation
         env:
@@ -46,6 +43,10 @@ jobs:
           GOARCH: arm64
         run: |
           go build -ldflags="-s -w" -o mosac cmd/mosac/main.go
+
+      - name: Ad-Hoc Codesign for Apple Silicon
+        run: |
+          codesign --force --options runtime --deep --sign - ./mosac
 
       - name: GitHub Release
         uses: softprops/action-gh-release@v2

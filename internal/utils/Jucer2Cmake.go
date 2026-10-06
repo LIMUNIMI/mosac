@@ -249,37 +249,37 @@ func parseJucerFile(jucerFilePath string, pluginFormats []string) (proj *PluginP
 	for _, c := range aaxCategoriesRaw {
 		switch c {
 		case "0":
-			parsedAax = append(parsedAax, "None")
+			parsedAax = append(parsedAax, "AAX_ePlugInCategory_None")
 		case "1":
-			parsedAax = append(parsedAax, "EQ")
+			parsedAax = append(parsedAax, "AAX_ePlugInCategory_EQ")
 		case "2":
-			parsedAax = append(parsedAax, "Dynamics")
+			parsedAax = append(parsedAax, "AAX_ePlugInCategory_Dynamics")
 		case "4":
-			parsedAax = append(parsedAax, "PitchShift")
+			parsedAax = append(parsedAax, "AAX_ePlugInCategory_PitchShift")
 		case "8":
-			parsedAax = append(parsedAax, "Reverb")
+			parsedAax = append(parsedAax, "AAX_ePlugInCategory_Reverb")
 		case "16":
-			parsedAax = append(parsedAax, "Delay")
+			parsedAax = append(parsedAax, "AAX_ePlugInCategory_Delay")
 		case "32":
-			parsedAax = append(parsedAax, "Modulation")
+			parsedAax = append(parsedAax, "AAX_ePlugInCategory_Modulation")
 		case "64":
-			parsedAax = append(parsedAax, "Harmonic")
+			parsedAax = append(parsedAax, "AAX_ePlugInCategory_Harmonic")
 		case "128":
-			parsedAax = append(parsedAax, "NoiseReduction")
+			parsedAax = append(parsedAax, "AAX_ePlugInCategory_NoiseReduction")
 		case "256":
-			parsedAax = append(parsedAax, "Dither")
+			parsedAax = append(parsedAax, "AAX_ePlugInCategory_Dither")
 		case "512":
-			parsedAax = append(parsedAax, "SoundField")
+			parsedAax = append(parsedAax, "AAX_ePlugInCategory_SoundField")
 		case "1024":
-			parsedAax = append(parsedAax, "HWGenerators")
+			parsedAax = append(parsedAax, "AAX_ePlugInCategory_HWGenerators")
 		case "2048":
-			parsedAax = append(parsedAax, "SWGenerators")
+			parsedAax = append(parsedAax, "AAX_ePlugInCategory_SWGenerators")
 		case "4096":
-			parsedAax = append(parsedAax, "WrappedPlugin")
+			parsedAax = append(parsedAax, "AAX_ePlugInCategory_WrappedPlugin")
 		case "8192":
-			parsedAax = append(parsedAax, "Effect")
+			parsedAax = append(parsedAax, "AAX_ePlugInCategory_Effect")
 		case "65536":
-			parsedAax = append(parsedAax, "MIDIEffect")
+			parsedAax = append(parsedAax, "AAX_ePlugInCategory_MIDIEffect")
 		}
 	}
 	proj.PluginAAXCategory = parsedAax
@@ -421,7 +421,7 @@ endfunction()
 		b.WriteString(fmt.Sprintf("\n\tVST3_CATEGORIES \"%s\"\n\tVST3_AUTO_MANIFEST FALSE", strings.Join(proj.PluginVST3Category, "\" \"")))
 	}
 	if slices.Contains(proj.PluginFormats, "AAX") {
-		b.WriteString(fmt.Sprintf("\n\tAAX_CATEGORY %s", strings.Join(proj.PluginAAXCategory, "|")))
+		b.WriteString(fmt.Sprintf("\n\tAAX_CATEGORY %s", strings.Join(proj.PluginAAXCategory, " ")))
 	}
 	if slices.Contains(proj.PluginFormats, "AU") {
 		b.WriteString(fmt.Sprintf("\n\tAU_MAIN_TYPE %s", proj.PluginAUMainType))

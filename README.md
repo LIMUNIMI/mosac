@@ -25,7 +25,12 @@ Supported formats:
 
 Go is not required when using a binary downloaded from the [GitHub Releases](https://github.com/LIMUNIMI/mosac/releases) page. The machine still needs MacOS on Apple Silicon, Docker Desktop and Xcode Command Line Tools for MacOS builds.
 
-Download `mosac` and make it executable.
+Download `mosac`, make it executable and remove Apple quarantine.
+```sh
+xattr -d com.apple.quarantine mosac-arm64
+chmod +x mosac-arm64
+./mosac-arm64
+```
 The commands below are the same for a binary built from source and for a release binary. Use `go run path/to/mosac` instead of `./mosac` when running directly from the repository without building an executable.
 
 ## Installation

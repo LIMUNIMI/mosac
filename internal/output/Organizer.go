@@ -229,8 +229,8 @@ func pack_Compiled_Json_Source(projectPath, outputPath, pluginName string) error
 	jsonSrc := filepath.Join(outputPath, pluginName+".json")
 	jsonDest := filepath.Join(packDir, pluginName+".json")
 
-	if err := os.MkdirAll(packDir, 0755); err != nil {
-		return fmt.Errorf("error while creating directory %s: %w", packDir, err)
+	if err := os.MkdirAll(sourceDestDir, 0755); err != nil {
+		return fmt.Errorf("error while creating directory %s: %w", sourceDestDir, err)
 	}
 
 	if err := os.Rename(compiledSrc, compiledDest); err != nil && !os.IsNotExist(err) {
@@ -286,7 +286,7 @@ func pack_Compiled_Json_Source(projectPath, outputPath, pluginName string) error
 	})
 
 	if err != nil {
-		return fmt.Errorf("errore critico durante il trasferimento del codice sorgente: %w", err)
+		return fmt.Errorf("error while moving directories and files: %w", err)
 	}
 
 	return nil

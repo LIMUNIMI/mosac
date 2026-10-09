@@ -16,7 +16,7 @@ import (
 
 // fixes every metadata in the .jucer file, then does --resave (if host is Linux skips ONLY the --resave)
 func PrepareProject(projectPath, jucePath string, pluginFormats []string, skipAAX bool) (*PluginProject, error) {
-	jucerFilePath, err := getJucerFilePath(projectPath)
+	jucerFilePath, err := GetJucerFilePath(projectPath)
 	if err != nil {
 		return nil, fmt.Errorf("[PrepareProject] error occurred while resolving .jucer project file: %w", err)
 	}
@@ -207,12 +207,12 @@ func updateJucerFallbackMetadata(jucerFilePath string) error {
 		"companyName":                getString(raw.CompanyName, "LIM"),
 		"pluginManufacturerCode":     getString(raw.PluginManufacturerCode, "LIM!"),
 		"pluginManufacturer":         getString(raw.PluginManufacturer, "LIM"),
-		"pluginCode":                 getString(raw.PluginCode, getPluginCodeFromUID(*raw.ID)),
+		"pluginCode":                 getNormalizedPluginCode(raw),
 		"pluginDesc":                 getString(raw.PluginDesc, "No description available."),
-		"pluginName":                 getString(raw.PluginName, getString(raw.Name, *raw.Name)),
+		"pluginName":                 getString(raw.PluginName, getString(raw.Name, "BasicAudioPlugin")),
 		"companyEmail":               getString(raw.CompanyEmail, "lim@di.unimi.it"),
 		"companyWebsite":             getString(raw.CompanyWebsite, "https://audioplugins.lim.di.unimi.it/"),
-		"companyCopyright":           getString(raw.CompanyCopyright, *raw.CompanyName),
+		"companyCopyright":           getString(raw.CompanyCopyright, getString(raw.CompanyName, "LIM")),
 		"binaryDataNamespace":        getString(raw.BinaryDataNamespace, "BinaryData"),
 		"includeBinaryInJuceHeader":  strconv.Itoa(getInt(raw.IncludeBinaryInJuceHeader, 1)),
 		"pluginVST3Category":         getString(raw.PluginVST3Category, "Fx"),
@@ -258,7 +258,7 @@ func replaceRootXMLAttribute(content, attr, value string) (string, error) {
 
 	end := strings.Index(content[start:], ">")
 	if end == -1 {
-		return "", fmt.Errorf("[ProjucerManager] malformed Jucer project file: missing closing tag for JUCERPROJECT")
+		return "", fmt.Errorf("[replaceRootXMLAttribute] malformed Jucer project file: missing closing tag for JUCERPROJECT")
 	}
 
 	openingTag := content[start : start+end+1]
@@ -564,7 +564,7 @@ func parseJucerFile(jucerFilePath string) (proj *PluginProject, err error) {
 }
 
 // returns the absolute path of the .jucer file in the specified project directory, or an error if not found or if multiple .jucer files are present.
-func getJucerFilePath(ProjectPath string) (string, error) {
+func GetJucerFilePath(ProjectPath string) (string, error) {
 	files, err := os.ReadDir(ProjectPath)
 	if err != nil {
 		return "", fmt.Errorf("[getJucerFilePath] Error while opening dir path %s: %w", ProjectPath, err)

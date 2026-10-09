@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	project "mosac/internal/project"
 	utils "mosac/internal/utils"
 )
 
@@ -100,12 +99,21 @@ func removeFiles(toBeRemoved []string) {
 func writeInfoToJson(proj *utils.PluginProject, outputDir string, buildForOS, pluginFormats []string) error {
 	file, err := os.Create(filepath.Join(outputDir, fmt.Sprintf("%s.json", proj.PluginName)))
 	if err != nil {
-		return fmt.Errorf("[Output] error creating JSON file: %w", err)
+		return fmt.Errorf("[writeInfoToJson] error creating JSON file: %w", err)
 	}
 	defer file.Close()
 
+	if proj.Owner_json == "" {
+		proj.Owner_json = "default.owner@email.com"
+	}
+
+	macOSDeploymentTarget := "12.0"
+	if !slices.Contains(buildForOS, "MacOS") {
+		macOSDeploymentTarget = "null"
+	}
+
 	jsonData := PluginMetadata{
-		PluginName:    strings.ReplaceAll(proj.PluginName, "-", " "),
+		PluginName:    proj.PluginName,
 		PluginVersion: proj.Version,
 		PluginDesc:    proj.PluginDesc,
 		FxCategory:    proj.PluginVST3Category,
@@ -115,7 +123,7 @@ func writeInfoToJson(proj *utils.PluginProject, outputDir string, buildForOS, pl
 		CompanyWebsite: proj.CompanyWebsite,
 
 		TargetOS:              buildForOS,
-		MacOSDeploymentTarget: "12.0",
+		MacOSDeploymentTarget: macOSDeploymentTarget,
 		CompiledFormats:       pluginFormats,
 		DateUpd:               time.Now().UTC().Format("2006-01-02"), // symbolic string for Golang to indicate year-month-day
 
@@ -135,7 +143,7 @@ func writeInfoToJson(proj *utils.PluginProject, outputDir string, buildForOS, pl
 }
 
 // copies all available build output to the outputDir and creates a JSON metadata file.
-func OrganizeOutput(proj *utils.PluginProject, config *project.MosacConfig, projDir, outputDir, buildType string, buildForOS, pluginFormats []string, simpleOutput bool) error {
+func OrganizeOutput(proj *utils.PluginProject, projDir, outputDir, buildType string, buildForOS, pluginFormats []string, simpleOutput bool) error {
 	contentDir := filepath.Join(outputDir, proj.PluginName)
 	var (
 		err         error

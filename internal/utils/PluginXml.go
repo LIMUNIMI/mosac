@@ -133,7 +133,7 @@ func parseUserNotes(userNotes string) (owner string, rating int) {
 			ratingStr := strings.TrimSpace(rest)
 			parsedRating, err := strconv.Atoi(ratingStr)
 			if err != nil || parsedRating < 0 || parsedRating > 5 {
-				fmt.Println("        [parseUserNotes] non valid <rating> in UserNotes found -> rating = -1.")
+				fmt.Printf("-- non valid <rating> in UserNotes found -> rating = -1.\n\n")
 				rating = -1
 			} else {
 				rating = parsedRating

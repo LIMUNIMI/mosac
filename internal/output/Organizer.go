@@ -97,36 +97,30 @@ func removeFiles(toBeRemoved []string) {
 }
 
 // creates a JSON file containing metadata about the current plugin build.
-func writeInfoToJson(proj *utils.PluginProject, config *project.MosacConfig, outputDir string, buildForOS, pluginFormats []string) error {
+func writeInfoToJson(proj *utils.PluginProject, outputDir string, buildForOS, pluginFormats []string) error {
 	file, err := os.Create(filepath.Join(outputDir, fmt.Sprintf("%s.json", proj.PluginName)))
 	if err != nil {
-		return fmt.Errorf("[Output] Error creating JSON file: %w", err)
+		return fmt.Errorf("[Output] error creating JSON file: %w", err)
 	}
 	defer file.Close()
 
-	authors := []string{"LIM Student"}
-	companyEmail := []string{"lim@di.unimi.it"}
-	companyWebsite := "https://audioplugins.lim.di.unimi.it/"
-
-	if config != nil {
-		authors = config.Authors
-		companyEmail = config.Emails
-		companyWebsite = config.Url
-	}
-
 	jsonData := PluginMetadata{
-		PluginName:    strings.ReplaceAll(proj.PluginName, "_", " "),
+		PluginName:    strings.ReplaceAll(proj.PluginName, "-", " "),
 		PluginVersion: proj.Version,
 		PluginDesc:    proj.PluginDesc,
 		FxCategory:    proj.PluginVST3Category,
 
-		Authors:        authors,
-		CompanyEmail:   companyEmail,
-		CompanyWebsite: companyWebsite,
+		Authors:        proj.CompanyCopyright,
+		CompanyEmail:   strings.Split(proj.CompanyEmail, ","),
+		CompanyWebsite: proj.CompanyWebsite,
 
-		TargetOS:        buildForOS,
-		CompiledFormats: pluginFormats,
-		DateUpd:         time.Now().UTC().Format("2006-01-02"), // symbolic string for Golang to indicate year-month-day
+		TargetOS:              buildForOS,
+		MacOSDeploymentTarget: "12.0",
+		CompiledFormats:       pluginFormats,
+		DateUpd:               time.Now().UTC().Format("2006-01-02"), // symbolic string for Golang to indicate year-month-day
+
+		Owner:  proj.Owner_json,
+		Rating: proj.Rating_json,
 	}
 
 	encoder := json.NewEncoder(file)
@@ -134,7 +128,7 @@ func writeInfoToJson(proj *utils.PluginProject, config *project.MosacConfig, out
 
 	err = encoder.Encode(jsonData)
 	if err != nil {
-		return fmt.Errorf("[Output] Error writing JSON data: %w", err)
+		return fmt.Errorf("[Output] error writing JSON data: %w", err)
 	}
 
 	return nil
@@ -149,7 +143,7 @@ func OrganizeOutput(proj *utils.PluginProject, config *project.MosacConfig, proj
 	)
 
 	if err = os.MkdirAll(contentDir, os.ModePerm); err != nil {
-		return fmt.Errorf("[Output] Error occurred while creating output directory: %w", err)
+		return fmt.Errorf("[Output] error occurred while creating output directory: %w", err)
 	}
 	filteredFormats := make([]string, 0, len(pluginFormats))
 
@@ -207,7 +201,7 @@ func OrganizeOutput(proj *utils.PluginProject, config *project.MosacConfig, proj
 	removeFiles(toBeRemoved)
 	os.RemoveAll(filepath.Join(contentDir, "Windows", buildType, "AAX"))
 
-	if err := writeInfoToJson(proj, config, outputDir, buildForOS, filteredFormats); err != nil {
+	if err := writeInfoToJson(proj, outputDir, buildForOS, filteredFormats); err != nil {
 		return err
 	}
 	if err := copyDocFiles(projDir, contentDir); err != nil {
@@ -230,6 +224,10 @@ func pack_Compiled_Json_Source(projectPath, outputPath, pluginName string) error
 
 	jsonSrc := filepath.Join(outputPath, pluginName+".json")
 	jsonDest := filepath.Join(packDir, pluginName+".json")
+
+	if err := os.RemoveAll(packDir); err != nil {
+		return fmt.Errorf("error while cleaning previous pack directory: %w", err)
+	}
 
 	if err := os.MkdirAll(sourceDestDir, 0755); err != nil {
 		return fmt.Errorf("error while creating directory %s: %w", sourceDestDir, err)

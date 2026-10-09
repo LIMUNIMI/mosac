@@ -388,6 +388,7 @@ func parseJucerFile(jucerFilePath string) (proj *PluginProject, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("[parseJucerFile] error while opening file %s: %w", jucerFilePath, err)
 	}
+	defer file.Close()
 
 	decoder := xml.NewDecoder(file)
 	if err := decoder.Decode(&raw); err != nil {
@@ -396,11 +397,34 @@ func parseJucerFile(jucerFilePath string) (proj *PluginProject, err error) {
 
 	proj = &PluginProject{}
 
+	proj.ID = getString(raw.ID, "")
+	proj.Name = getString(raw.Name, "")
+	proj.Version = getString(raw.Version, "1.0.0")
+
+	proj.PluginName = getString(raw.PluginName, proj.Name)
+	proj.PluginManufacturer = getString(raw.PluginManufacturer, "LIM")
+	proj.PluginManufacturerCode = getString(raw.PluginManufacturerCode, "LIM!")
+	proj.PluginCode = getNormalizedPluginCode(raw)
+	proj.PluginDesc = getString(raw.PluginDesc, "No description available.")
+	proj.UserNotes = getString(raw.UserNotes, "owner:\nrating:\n")
+
+	proj.Owner_json, proj.Rating_json = parseUserNotes(proj.UserNotes)
+
+	proj.CompanyName = getString(raw.CompanyName, "")
+	proj.CompanyEmail = getString(raw.CompanyEmail, "")
+	proj.CompanyWebsite = getString(raw.CompanyWebsite, "")
+
+	if copyright := getString(raw.CompanyCopyright, ""); copyright != "" {
+		for _, c := range strings.Split(copyright, ",") {
+			proj.CompanyCopyright = append(proj.CompanyCopyright, strings.TrimSpace(c))
+		}
+	}
+
 	// parse pluginFormats (AAX can't be put in CMakeLists for lack of support on Linux and Win)
 	formats := strings.Split(*raw.PluginFormats, ",")
 	formatMapping := map[string]string{
-		"buildVST3": "VST3",
-		"buildAU":   "AU",
+		"buildVST3":       "VST3",
+		"buildAU":         "AU",
 		"buildStandalone": "Standalone",
 		"buildLV2":        "LV2",
 		"buildUnity":      "Unity",

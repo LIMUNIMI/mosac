@@ -58,17 +58,6 @@ func projucerExecutablePath(projucerAppPath string) string {
 	return filepath.Join(filepath.Dir(projucerAppPath), "Projucer")
 }
 
-func IsJUCEVersionLessThan8(jucePath string) bool {
-	re := regexp.MustCompile(`JUCE-?([0-9]+)`)
-	matches := re.FindStringSubmatch(jucePath)
-	if len(matches) != 2 {
-		return false
-	}
-
-	version, err := strconv.Atoi(matches[1])
-	return err == nil && version < 8
-}
-
 // checks if Projucer is built in the given JUCE directory. If not, it builds Projucer and returns its path.
 func CheckIfProjucerIsAlreadyBuilt(jucePath string) (string, error) {
 	projucerAppPath, err := filepath.Abs(filepath.Join(jucePath, "extras", "Projucer", "Builds", "MacOSX", "build", "Release", "Projucer.app"))

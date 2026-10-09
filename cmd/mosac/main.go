@@ -67,7 +67,7 @@ func createBatchCSVFile(args []string) int {
 	outPtr := batchCmd.String("out", "", "output directory for batch.csv file")
 	buildTypePtr := batchCmd.String("c", "Release", "build configuration (Debug or Release)")
 	sysPtr := batchCmd.String("sys", "MacOS,Linux,Windows", "comma-separated target system")
-	formatsPtr := batchCmd.String("formats", "Standalone,VST3,AU,LV2,Unity,AAX", "comma-separated build formats")
+	formatsPtr := batchCmd.String("formats", "Standalone,VST3,AU,LV2,Unity", "comma-separated build formats")
 
 	if err := batchCmd.Parse(args); err != nil {
 		return 1
@@ -91,7 +91,7 @@ func createBatchCSVFile(args []string) int {
 		return 1
 	}
 
-	if !IsFlagValid(formatsPtr, []string{"Standalone", "VST3", "AU", "LV2", "Unity", "AAX"}) {
+	if !IsFlagValid(formatsPtr, []string{"Standalone", "VST3", "AU", "LV2", "Unity"}) {
 		fmt.Println("Error: Invalid formats flag. Must be a comma-separated list of 'Standalone', 'VST3', 'AU', 'LV2', 'Unity', 'AAX'.")
 		batchCmd.Usage()
 		return 1

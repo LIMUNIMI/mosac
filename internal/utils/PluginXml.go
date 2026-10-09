@@ -120,20 +120,23 @@ func getPluginCodeFromUID(uid string) string {
 // searches "owner:....." and "rating:n" (with 0<n<6) in separate lines in the UserNotes and returns the parsed values
 func parseUserNotes(userNotes string) (owner string, rating int) {
 	owner = "default.owner@email.com"
-	
+	rating = -1
+
 	// use a scanner to read the userNotes line by line
 	scanner := bufio.NewScanner(strings.NewReader(userNotes))
 	for scanner.Scan() {
 		line := scanner.Text()
-		
+
 		if rest, found := strings.CutPrefix(line, "owner:"); found {
 			owner = strings.TrimSpace(rest)
-			} else if rest, found := strings.CutPrefix(line, "rating:"); found {
-				ratingStr := strings.TrimSpace(rest)
-				rating, err := strconv.Atoi(ratingStr)
-			if err != nil || rating < 0 || rating > 5 {
-				fmt.Println("[PluginXml] non valid <rating> in UserNotes found -> rating = -1.")
+		} else if rest, found := strings.CutPrefix(line, "rating:"); found {
+			ratingStr := strings.TrimSpace(rest)
+			parsedRating, err := strconv.Atoi(ratingStr)
+			if err != nil || parsedRating < 0 || parsedRating > 5 {
+				fmt.Println("        [parseUserNotes] non valid <rating> in UserNotes found -> rating = -1.")
 				rating = -1
+			} else {
+				rating = parsedRating
 			}
 		}
 	}

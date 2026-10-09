@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	project "mosac/internal/project"
 	utils "mosac/internal/utils"
@@ -17,16 +18,19 @@ import (
 type PluginMetadata struct {
 	PluginName    string   `json:"pluginName"`
 	PluginVersion string   `json:"pluginVersion"`
-	PluginDesc    string   `json:"pluginDesc"`
+	PluginDesc    string   `json:"pluginDesc"` // description from .jucer file (unique, no more description in mosac.conf)
 	FxCategory    []string `json:"FxCategory"`
 
-	EnglishDesc string   `json:"englishDesc"`
-	Authors     []string `json:"authors"`
-	Email       []string `json:"email"`
-	Url         string   `json:"url"`
+	Authors        []string `json:"authors"` // authors names (from company copyright in .jucer)
+	Owner          string   `json:"owner"`   // from .jucer <notes> section, search for keyword "owner"
+	CompanyEmail   []string `json:"email"`   // ONLY first email in .jucer's companyEmail
+	CompanyWebsite string   `json:"url"`     // .jucer's companyWebsite (default lim plugin site)
 
-	TargetOS        []string `json:"targetOS"`
-	CompiledFormats []string `json:"compiledFormats"`
+	TargetOS              []string `json:"targetOS"`
+	CompiledFormats       []string `json:"compiledFormats"`
+	MacOSDeploymentTarget string   `json:"macOSDeploymentTarget"` // see if implement a new "setting" section or hard code and update manually every time
+	DateUpd               string   `json:"dateupd"`
+	Rating                int      `json:"rating"` // 0-5 stars, default -1 (not rated)
 }
 
 // copies .pdf and .md files from the src directory to the dest directory.
@@ -100,16 +104,14 @@ func writeInfoToJson(proj *utils.PluginProject, config *project.MosacConfig, out
 	}
 	defer file.Close()
 
-	englishDesc := "insert here english plugin description"
-	authors := []string{"author1", "author2"}
-	email := []string{"email1@example.com", "email2@example.com"}
-	url := ""
+	authors := []string{"LIM Student"}
+	companyEmail := []string{"lim@di.unimi.it"}
+	companyWebsite := "https://audioplugins.lim.di.unimi.it/"
 
 	if config != nil {
-		englishDesc = config.EnglishDesc
 		authors = config.Authors
-		email = config.Emails
-		url = config.Url
+		companyEmail = config.Emails
+		companyWebsite = config.Url
 	}
 
 	jsonData := PluginMetadata{
@@ -118,13 +120,13 @@ func writeInfoToJson(proj *utils.PluginProject, config *project.MosacConfig, out
 		PluginDesc:    proj.PluginDesc,
 		FxCategory:    proj.PluginVST3Category,
 
-		EnglishDesc: englishDesc,
-		Authors:     authors,
-		Email:       email,
-		Url:         url,
+		Authors:        authors,
+		CompanyEmail:   companyEmail,
+		CompanyWebsite: companyWebsite,
 
 		TargetOS:        buildForOS,
 		CompiledFormats: pluginFormats,
+		DateUpd:         time.Now().UTC().Format("2006-01-02"), // symbolic string for Golang to indicate year-month-day
 	}
 
 	encoder := json.NewEncoder(file)
@@ -244,9 +246,9 @@ func pack_Compiled_Json_Source(projectPath, outputPath, pluginName string) error
 		"JuceLibraryCode": true,
 		"build":           true,
 		"Builds":          true,
-		".git":						 true,
-	  ".github":				 true,
-		".vscode":				 true,
+		".git":            true,
+		".github":         true,
+		".vscode":         true,
 	}
 	excludedFiles := map[string]bool{
 		"CMakeLists.txt": true,

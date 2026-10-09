@@ -47,7 +47,6 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 		err             error
 		skipLinuxAndWin = false
 		buildErrors     []error
-		pluginProject   *utils.PluginProject
 	)
 
 	projDir, err = filepath.Abs(projDir)
@@ -86,7 +85,7 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 	}
 
 	skipAAX := utils.IsJUCEVersionLessThan8(juceDir)
-	if skipAAX {
+	if skipAAX { // removes AAX from pluginFormats if JUCE version is < 8
 		filteredFormats := pluginFormats[:0]
 		for _, format := range pluginFormats {
 			if format != "AAX" {
@@ -94,21 +93,16 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 			}
 		}
 		pluginFormats = filteredFormats
-		if len(pluginFormats) == 0 {
+		if len(pluginFormats) == 0 { // user wants to build only AAX, but JUCE version is < 8
 			return fmt.Errorf("[BuildPlugin] AAX requires JUCE 8 or newer")
 		}
+		// inform the user that AAX will be skipped due to JUCE version
 		fmt.Println("[BuildPlugin] AAX format requires JUCE 8 or newer. Skipping AAX.")
 	}
 
 	fmt.Printf("Building project at: %s\nSelected JUCE directory: %s\nOutput directory: %s\nBuild type: %s\nTarget OS: %v\nPlugin formats: %v\n\n--- START ---\n", projDir, juceDir, outputDir, buildType, buildForOS, pluginFormats)
 
-	// create CMakeLists.txt from the prepared Jucer file
-	pluginProject, err = utils.Jucer2Cmake(projDir, pluginFormats)
-	if err != nil {
-		buildErrors = append(buildErrors, err)
-		goto End
-	}
-
+	// removes build directories if cleanBuild is true
 	if cleanBuild {
 		err = os.RemoveAll(filepath.Join(projDir, "build"))
 		if err != nil {
@@ -125,12 +119,23 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 			return fmt.Errorf("[BuildPlugin] Error occurred while cleaning JuceLibraryCode directory: %w", err)
 		}
 	}
+	cmakeOutputPath := filepath.Join(projDir, "CMakeLists.txt")
 
-	if err := utils.PrepareProject(projDir, juceDir, pluginFormats, skipAAX); err != nil {
-		buildErrors = append(buildErrors, fmt.Errorf("[BuildPlugin] Error preparing Jucer project: %w", err))
+	// fix every metadata in the .jucer file, then does --resave (if host is Linux skips ONLY the --resave)
+	pluginProject, err := utils.PrepareProject(projDir, juceDir, pluginFormats, skipAAX)
+	if err != nil {
+		buildErrors = append(buildErrors, fmt.Errorf("[BuildPlugin] Error updating and resaving .jucer file: %w", err))
 		goto End
 	}
 
+	// using the pluginProject struct metadata, it creates a CMakeLists.txt in cmakeOutputPath.
+	err = utils.Jucer2Cmake(cmakeOutputPath, pluginProject)
+	if err != nil {
+		buildErrors = append(buildErrors, err)
+		goto End
+	}
+
+	// checks if AAX is the only selected format and skips Linux and Windows builds if true
 	if len(pluginFormats) == 1 && pluginFormats[0] == "AAX" {
 		fmt.Println("[BuildPlugin] AAX format is only supported on MacOS (JUCE8 or newer). Linux and Windows builds will be skipped.")
 		skipLinuxAndWin = true

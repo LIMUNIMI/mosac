@@ -5,10 +5,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"mosac/internal/builders"
 )
 
 // scans the provided directory for projects and generates a batch.csv file.
-func CreateBatchCSV(analysisDir, defaultJuce, outputDir, buildConfig, systems, formats string) error {
+func CreateBatchCSV(analysisDir string, defaultJuce int, outputDir, buildConfig, systems, formats string) error {
 	analysisPath, err := filepath.Abs(analysisDir)
 	if err != nil {
 		return fmt.Errorf("error resolving absolute path for analysis directory: %v", err)
@@ -58,13 +60,17 @@ func CreateBatchCSV(analysisDir, defaultJuce, outputDir, buildConfig, systems, f
 	sysCsvList := strings.ReplaceAll(systems, ",", ";")
 	fmtCsvList := strings.ReplaceAll(formats, ",", ";")
 
-	for _, projPath := range projectPaths {
-		juceClm := strings.TrimSpace(defaultJuce)
+	defaultJuceStr := fmt.Sprintf("%d", defaultJuce)
 
-		// if the project directory contains a 'mosac.conf', leave the JUCE column empty
-		confPath := filepath.Join(projPath, "mosac.conf")
-		if stat, err := os.Stat(confPath); err == nil && !stat.IsDir() {
-			juceClm = ""
+	for _, projPath := range projectPaths {
+		juceClm := strings.TrimSpace(defaultJuceStr)
+
+		// if the .jucer file in userNotes section has a juce:n line, use it. use the defaultJuce value otherwise.
+		juceVer := builders.ExtractJuceVersionFromUserNotes(projPath)
+		if juceVer == -1 {
+			fmt.Printf("    Warning: Could not determine JUCE version for project at %s. Using default JUCE version: %d\n", projPath, defaultJuce)
+		} else {
+			juceClm = fmt.Sprintf("%d", juceVer)
 		}
 
 		line := fmt.Sprintf("%s,%s,%s,%s,%s\n", projPath, juceClm, buildConfig, sysCsvList, fmtCsvList)
@@ -74,7 +80,7 @@ func CreateBatchCSV(analysisDir, defaultJuce, outputDir, buildConfig, systems, f
 		}
 	}
 
-	fmt.Printf("    Successfully created batch file at: %s\n", batchFilePath)
+	fmt.Printf("\n    Successfully created batch file at: %s\n", batchFilePath)
 	fmt.Printf("    Found %d projects.\n", len(projectPaths))
 
 	return nil

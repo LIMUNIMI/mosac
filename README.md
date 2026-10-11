@@ -110,26 +110,26 @@ Options:
 | Option | Description | Default |
 | --- | --- | --- |
 | `-dir` | Directory containing project directories | required |
-| `-juce` | Default JUCE path or version | required |
+| `-juce` | Default JUCE version | required |
 | `-out` | Directory where `batch.csv` is written | required |
 | `-c` | `Debug` or `Release` | `Release` |
 | `-sys` | Comma-separated target systems | `MacOS,Linux,Windows` |
 | `-formats` | Comma-separated plugin formats | `Standalone,VST3,AU,LV2,Unity,AAX` |
 
-When a project contains `mosac.conf`, the generated row leaves the JUCE column empty. During the build MOSAC resolves the JUCE version from that project configuration.
+When a project's .jucer file contains `userNotes="juce:n"`, the generated row leaves the JUCE column empty. During the build MOSAC resolves the JUCE version from that project configuration.
 
 ## Batch file format
 
 Each non-comment row contains exactly five comma-separated columns:
 
 ```text
-project_path,juce_path,build_configuration,OS,plugin_formats
+project_path,juce_version,build_configuration,OS,plugin_formats
 ```
 
 Systems and formats inside their columns are separated by semicolons:
 
 ```csv
-# project_path,juce_path,build_configuration,OS,plugin_formats
+# project_path,juce_version,build_configuration,OS,plugin_formats
 /home/user/plugins/plugin1,8,Release,MacOS;Linux;Windows,Standalone;VST3;AU;LV2
 /home/user/plugins/plugin2,,Debug,MacOS,VST3;AAX
 /home/user/plugins/plugin3,7,Release,Linux,Standalone;LV2
@@ -138,7 +138,7 @@ Systems and formats inside their columns are separated by semicolons:
 Column rules:
 
 1. `project_path`: path to the project directory.
-2. `juce_path`: an absolute JUCE directory, `7`, `8`, `JUCE7` or `JUCE8`. Leave it empty when the project has `mosac.conf`.
+2. `juce_version`: a number > than 1. you must download the specified Juce version using `mosac update -v ...`
 3. `build_configuration`: `Debug` or `Release`.
 4. `OS`: one or more of `MacOS`, `Linux` and `Windows`, separated by `;`.
 5. `plugin_formats`: one or more supported formats, separated by `;`.
@@ -146,14 +146,10 @@ Column rules:
 Build the complete batch with:
 
 ```sh
-./mosac build -b /home/user/batches/batch.csv -OP /home/user/builds
+./mosac build -b /home/user/batches/batch.csv -OP /home/user/builds -new
 ```
 
 `-OP` is required for batch builds. Add `-new` to remove previous build directories before compiling (recommended) and/or the `simple-out` flag (see *Building a Single Project* for more informations):
-
-```sh
-./mosac build -b /home/user/batches/batch.csv -OP /home/user/builds -new
-```
 
 ## Project structure
 
@@ -167,7 +163,6 @@ ProjectDir/
 │   │   └── file.h
 │   └── Library2/
 ├── plugin.jucer           # exactly one .jucer file
-├── mosac.conf             # optional
 ├── README.md              # optional
 ├── Installers/            # optional, copied to the output
 ├── Presets/               # optional, copied to the output
@@ -179,60 +174,22 @@ ProjectDir/
 
 External libraries must be inside `Libraries/` and referenced by the `.jucer` project through Projucer. `Presets/` and `Installers/`, when present, are copied to the output directory.
 
-## Project configuration: `mosac.conf`
+## Project configuration: `.jucer` file
+It's recommended to compile every part of the `pluginName.jucer` file, in particular:
+- **userNotes** -> it is parsed line by line, searching for keywords such as `owner:default@email.com` or `rating:n` (0<n<6) or `juce:n`. If yout specify the juce version in this section, you can omit the `-JV` flag.
+- **pluginDesc** -> plugin description.
+- **companyWebsite / companyEmail / companyCopyright** -> useful metadata for the generated `.json` file.
+- **macOS XCode exporter** -> in order to build for MacOS, you must create an XCode exporter.
 
-`mosac.conf` is optional. When present, it supplies the JUCE version and metadata used in the build output. It must contain four or five lines in this order:
-
-```text
-JUCE-8
-english plugin description
-Author1,Author2
-author1@example.com,author2@example.com
-https://example.com
-```
-
-The fifth line, the URL, is optional. The first line accepts `JUCEn` or `JUCE-n` (*n* is the major JUCE version).
-
-Example:
-
-```text
-JUCE-7
-A synthesizer plugin for research and live performance.
-Carlo Ancri,Autor Two
-carlo@gmail.com,author2@gmail.com
-https://example.com/plugin
-```
-
-When `mosac.conf` exists, a single-project build can omit `-JP`:
-
-```sh
-./mosac build \
-  -PP /home/user/plugins/plugin1 \
-  -OP /home/user/builds \
-  -sys MacOS \
-  -formats Standalone,VST3
-```
-
-Without `mosac.conf`, provide the JUCE path explicitly with `-JP`:
-
-```sh
-./mosac build \
-  -PP /home/user/plugins/plugin1 \
-  -JP 8 \
-  -OP /home/user/builds \
-  -c Release \
-  -sys MacOS,Linux,Windows \
-  -formats Standalone,VST3,AU,LV2,Unity
-```
 
 ## Building a single project: `build`
 
-The single-project mode requires `-PP` and `-OP`. Use `-JP` unless the project contains a valid `mosac.conf`.
+The single-project mode requires `-PP` and `-OP`. Use `-JV` unless the project contains a valid `mosac.conf`.
 
 ```sh
 ./mosac build \
   -PP /home/user/plugins/MyPlugin \
-  -JP 8 \
+  -JV 8 \
   -OP /home/user/builds \
   -c Release \
   -sys MacOS \
@@ -244,7 +201,7 @@ Options:
 | Option | Description | Default |
 | --- | --- | --- |
 | `-PP` | Single project path | empty |
-| `-JP` | JUCE path or version | empty when `mosac.conf` is present |
+| `-JV` | JUCE version | empty when specified in `userNotes` |
 | `-OP` | Output directory | required |
 | `-c` | `Debug` or `Release` | `Release` |
 | `-sys` | Comma-separated target systems | `MacOS,Linux,Windows` |
@@ -256,13 +213,13 @@ Examples for individual target systems:
 
 ```sh
 # Linux plugins
-./mosac build -PP /home/user/plugins/MyPlugin -JP 8 -OP /home/user/builds -sys Linux -formats Standalone,VST3,LV2
+./mosac build -PP /home/user/plugins/MyPlugin -JV 8 -OP /home/user/builds -sys Linux -formats Standalone,VST3,LV2
 
 # Windows plugins through Docker cross-compilation
-./mosac build -PP /home/user/plugins/MyPlugin -JP 8 -OP /home/user/builds -sys Windows -formats Standalone,VST3,Unity
+./mosac build -PP /home/user/plugins/MyPlugin -JV 8 -OP /home/user/builds -sys Windows -formats Standalone,VST3,Unity
 
 # MacOS plugins, including AAX with JUCE 8+
-./mosac build -PP /home/user/plugins/MyPlugin -JP 8 -OP /home/user/builds -sys MacOS -formats Standalone,VST3,AU,AAX
+./mosac build -PP /home/user/plugins/MyPlugin -JV 8 -OP /home/user/builds -sys MacOS -formats Standalone,VST3,AU,AAX
 ```
 
 ## AAX rules

@@ -63,7 +63,7 @@ func createBatchCSVFile(args []string) int {
 	batchCmd := flag.NewFlagSet("create-batch", flag.ContinueOnError)
 
 	dirPtr := batchCmd.String("dir", "", "directory containing the projects")
-	jucePtr := batchCmd.String("juce", "", "default JUCE version to use")
+	jucePtr := batchCmd.Int("juce", -1, "default JUCE version to use")
 	outPtr := batchCmd.String("out", "", "output directory for batch.csv file")
 	buildTypePtr := batchCmd.String("c", "Release", "build configuration (Debug or Release)")
 	sysPtr := batchCmd.String("sys", "MacOS,Linux,Windows", "comma-separated target system")
@@ -73,7 +73,7 @@ func createBatchCSVFile(args []string) int {
 		return 1
 	}
 
-	if *dirPtr == "" || *jucePtr == "" || *outPtr == "" {
+	if *dirPtr == "" || *jucePtr == -1 || *outPtr == "" {
 		fmt.Println("Error: Missing required flags for batch command.")
 		batchCmd.Usage()
 		return 1
@@ -184,7 +184,7 @@ func runBuildCmd(args []string) int {
 			return 1
 		}
 
-		if *ppPtr != "" || *jpPtr < 1 {
+		if *ppPtr != "" || *jpPtr != -1 {
 			fmt.Println("Error: Cannot specify both batch file (-b) and single project flags (-PP, -JV).")
 			buildCmd.Usage()
 			return 1

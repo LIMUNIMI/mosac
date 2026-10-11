@@ -63,7 +63,7 @@ func BuildPlugin(projDir string, juceVer int, outputDir string, buildType string
 
 	// if juceVer == -1, it means the user did not specify a JUCE version, so it will try to extract it from the .jucer file.
 	if juceVer == -1 {
-		juceVer = extractJuceVersionFromUserNotes(projDir)
+		juceVer = ExtractJuceVersionFromUserNotes(projDir)
 		if juceVer == -1 {
 			fmt.Println("[BuildPlugin] No juce version specified and unable to extract from .jucer file. Please specify a JUCE version using the -JV flag.")
 			return err
@@ -272,7 +272,7 @@ func BuildBatch(batchPath, outputDir string, cleanBuild, simpleOutput bool) erro
 		return fmt.Errorf("[BuildBatch] Error occurred while reading batch file: %w", err)
 	}
 
-	fmt.Println("===== Finished Batch-Mode =====")
+	fmt.Println("\n\n===== Finished Batch-Mode =====")
 
 	if len(buildErrors) > 0 {
 		fmt.Printf("\n\n--- ERRORS ---\n")
@@ -285,7 +285,7 @@ func BuildBatch(batchPath, outputDir string, cleanBuild, simpleOutput bool) erro
 }
 
 // given a project directory, it extracts the JUCE version from the .jucer file's User Notes section (juce:version). If the version is not found, it returns an error.
-func extractJuceVersionFromUserNotes(projDir string) int {
+func ExtractJuceVersionFromUserNotes(projDir string) int {
 	jucerFilePath, err := utils.GetJucerFilePath(projDir)
 	if err != nil {
 		return -1
@@ -330,7 +330,7 @@ func extractJuceVersionFromUserNotes(projDir string) int {
 func getJucePath(juceVer int) (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("[getJucePath] error finding user home directory: %w", err)
+		return "", fmt.Errorf("[getJucePath] error finding user home directory: %w\n", err)
 	}
 
 	versionStr := strconv.Itoa(juceVer)
@@ -338,18 +338,18 @@ func getJucePath(juceVer int) (string, error) {
 	info, err := os.Stat(juceDirPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", fmt.Errorf("[getJucePath] error occurred while resolving JUCE directory path: version %d not found", juceVer)
+			return "", fmt.Errorf("[getJucePath] juce version %d not found.\n", juceVer)
 		}
-		return "", fmt.Errorf("[getJucePath] error accessing path %s: %w", juceDirPath, err)
+		return "", fmt.Errorf("[getJucePath] error accessing path %s: %w\n", juceDirPath, err)
 	}
 
 	if !info.IsDir() {
-		return "", fmt.Errorf("[getJucePath] error: path exists but is not a directory: %s", juceDirPath)
+		return "", fmt.Errorf("[getJucePath] error: path exists but is not a directory: %s\n", juceDirPath)
 	}
 
 	absPath, err := filepath.Abs(juceDirPath)
 	if err != nil {
-		return "", fmt.Errorf("[getJucePath] error resolving absolute path: %w", err)
+		return "", fmt.Errorf("[getJucePath] error resolving absolute path: %w\n", err)
 	}
 
 	return absPath, nil

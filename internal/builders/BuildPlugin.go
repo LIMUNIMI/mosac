@@ -2,13 +2,14 @@ package builders
 
 import (
 	"bufio"
+	"encoding/xml"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"mosac/internal/output"
-	"mosac/internal/project"
 	"mosac/internal/utils"
 )
 
@@ -30,7 +31,7 @@ var (
 )
 
 // builds the plugin project for the specified OS and plugin formats
-func BuildPlugin(projDir string, juceDir string, outputDir string, buildType string, buildForOS, pluginFormats []string, cleanBuild, simpleOutput bool) error {
+func BuildPlugin(projDir string, juceVer int, outputDir string, buildType string, buildForOS, pluginFormats []string, cleanBuild, simpleOutput bool) error {
 	if len(buildForOS) == 0 {
 		fmt.Println("[MOSAC] Please specify at least one target OS.")
 		return fmt.Errorf("[MOSAC] Please specify at least one target OS.")
@@ -47,7 +48,6 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 		err             error
 		skipLinuxAndWin = false
 		buildErrors     []error
-		pluginProject   *utils.PluginProject
 	)
 
 	projDir, err = filepath.Abs(projDir)
@@ -61,32 +61,31 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 		return err
 	}
 
-	mosacConf, configFound, err := project.LoadMosacConfig(projDir)
+	// if juceVer == -1, it means the user did not specify a JUCE version, so it will try to extract it from the .jucer file.
+	if juceVer == -1 {
+		juceVer = extractJuceVersionFromUserNotes(projDir)
+		if juceVer == -1 {
+			fmt.Println("[BuildPlugin] No juce version specified and unable to extract from .jucer file. Please specify a JUCE version using the -JV flag.")
+			return err
+		}
+	}
+
+	if juceVer < 1 {
+		fmt.Printf("[BuildPlugin] Invalid JUCE version specified: %d. Must be a positive integer.", juceVer)
+		return fmt.Errorf("[BuildPlugin] Invalid JUCE version specified: %d. Must be a positive integer.", juceVer)
+	}
+
+	// gets the juce directory path based on the specified juce version. If the version is not found, it returns an error.
+	juceDir, err := getJucePath(juceVer)
 	if err != nil {
-		fmt.Printf("[BuildPlugin] Error occurred while reading mosac.conf: %v\n", err)
+		fmt.Printf("[BuildPlugin] Error occurred while resolving JUCE directory path: %v", err)
 		return err
 	}
 
-	if juceDir != "" { // -JP flag is provided
-		juceDir, err = project.ResolveJuceDir(juceDir)
-		if err != nil {
-			fmt.Printf("[BuildPlugin] Error occurred while resolving JUCE directory path: %v\n", err)
-			return fmt.Errorf("[BuildPlugin] Error occurred while resolving JUCE directory path: %w", err)
-		}
-
-	} else if configFound { // there is mosac.conf file in the project dir
-		juceDir, err = project.ResolveJuceDirFromVersion(mosacConf.JuceVersion)
-		if err != nil {
-			fmt.Printf("[BuildPlugin] Error occurred while resolving JUCE directory from mosac.conf: %v", err)
-			return fmt.Errorf("[BuildPlugin] Error occurred while resolving JUCE directory from mosac.conf: %v\n", err)
-		}
-	} else {
-		fmt.Println("[MOSAC] Please provide the JUCE directory with -JP or add a mosac.conf file in the project directory")
-		return fmt.Errorf("[MOSAC] Please provide the JUCE directory with -JP or add a mosac.conf file in the project directory")
-	}
-
-	skipAAX := utils.IsJUCEVersionLessThan8(juceDir)
-	if skipAAX {
+	// AAX requires juce version >= 8. juce version is extracted from .jucer file's User Notes section.
+	// juce version is overrided by CLI.
+	skipAAX := juceVer < 8
+	if skipAAX { // removes AAX from pluginFormats if juce version is < 8
 		filteredFormats := pluginFormats[:0]
 		for _, format := range pluginFormats {
 			if format != "AAX" {
@@ -94,21 +93,14 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 			}
 		}
 		pluginFormats = filteredFormats
-		if len(pluginFormats) == 0 {
+		if len(pluginFormats) == 0 { // user wants to build only AAX, but JUCE version is < 8
 			return fmt.Errorf("[BuildPlugin] AAX requires JUCE 8 or newer")
 		}
+		// inform the user that AAX will be skipped due to JUCE version
 		fmt.Println("[BuildPlugin] AAX format requires JUCE 8 or newer. Skipping AAX.")
 	}
 
-	fmt.Printf("Building project at: %s\nSelected JUCE directory: %s\nOutput directory: %s\nBuild type: %s\nTarget OS: %v\nPlugin formats: %v\n\n--- START ---\n", projDir, juceDir, outputDir, buildType, buildForOS, pluginFormats)
-
-	// create CMakeLists.txt from the prepared Jucer file
-	pluginProject, err = utils.Jucer2Cmake(projDir, pluginFormats)
-	if err != nil {
-		buildErrors = append(buildErrors, err)
-		goto End
-	}
-
+	// removes build directories if cleanBuild is true
 	if cleanBuild {
 		err = os.RemoveAll(filepath.Join(projDir, "build"))
 		if err != nil {
@@ -125,12 +117,26 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 			return fmt.Errorf("[BuildPlugin] Error occurred while cleaning JuceLibraryCode directory: %w", err)
 		}
 	}
+	cmakeOutputPath := filepath.Join(projDir, "CMakeLists.txt")
 
-	if err := utils.PrepareProject(projDir, juceDir, pluginFormats, skipAAX); err != nil {
-		buildErrors = append(buildErrors, fmt.Errorf("[BuildPlugin] Error preparing Jucer project: %w", err))
+	// fix every metadata in the .jucer file, then does --resave (if host is Linux skips ONLY the --resave)
+	pluginProject, err := utils.PrepareProject(projDir, juceDir, pluginFormats, skipAAX)
+	if err != nil {
+		buildErrors = append(buildErrors, fmt.Errorf("[BuildPlugin] Error updating and resaving .jucer file: %w", err))
 		goto End
 	}
 
+	// using the pluginProject struct metadata, it creates a CMakeLists.txt in cmakeOutputPath.
+	err = utils.Jucer2Cmake(cmakeOutputPath, pluginProject)
+	if err != nil {
+		buildErrors = append(buildErrors, err)
+		goto End
+	}
+
+	//! START BUILD PROCESS
+	fmt.Printf("Building project at: %s\nSelected JUCE directory: %s\nOutput directory: %s\nBuild type: %s\nTarget OS: %v\nPlugin formats: %v\n\n--- START ---\n", projDir, juceDir, outputDir, buildType, buildForOS, pluginFormats)
+
+	// checks if AAX is the only selected format and skips Linux and Windows builds if true
 	if len(pluginFormats) == 1 && pluginFormats[0] == "AAX" {
 		fmt.Println("[BuildPlugin] AAX format is only supported on MacOS (JUCE8 or newer). Linux and Windows builds will be skipped.")
 		skipLinuxAndWin = true
@@ -191,7 +197,7 @@ func BuildPlugin(projDir string, juceDir string, outputDir string, buildType str
 	}
 
 	if pluginProject != nil {
-		err = output.OrganizeOutput(pluginProject, mosacConf, projDir, outputDir, buildType, buildForOS, pluginFormats, simpleOutput)
+		err = output.OrganizeOutput(pluginProject, projDir, outputDir, buildType, buildForOS, pluginFormats, simpleOutput)
 		if err != nil {
 			return fmt.Errorf("[BuildPlugin] Error occurred while organizing output: %w", err)
 		}
@@ -238,7 +244,8 @@ func BuildBatch(batchPath, outputDir string, cleanBuild, simpleOutput bool) erro
 		}
 
 		projectPath := strings.TrimSpace(args[0])
-		jucePath := strings.TrimSpace(args[1])
+		juceVerStr := strings.TrimSpace(args[1])
+		juceVer, _ := strconv.Atoi(juceVerStr)
 		buildType := strings.TrimSpace(args[2])
 		buildForOS := strings.Split(strings.TrimSpace(args[3]), ";")
 		pluginFormats := strings.Split(strings.TrimSpace(args[4]), ";")
@@ -252,7 +259,7 @@ func BuildBatch(batchPath, outputDir string, cleanBuild, simpleOutput bool) erro
 
 		fmt.Printf("== %d° Plugin ==========\n", n+1)
 
-		compilationErrors := BuildPlugin(projectPath, jucePath, outputDir, buildType, buildForOS, pluginFormats, cleanBuild, simpleOutput)
+		compilationErrors := BuildPlugin(projectPath, juceVer, outputDir, buildType, buildForOS, pluginFormats, cleanBuild, simpleOutput)
 
 		// format single n° plugin error
 		if compilationErrors != nil {
@@ -275,4 +282,75 @@ func BuildBatch(batchPath, outputDir string, cleanBuild, simpleOutput bool) erro
 	}
 
 	return nil
+}
+
+// given a project directory, it extracts the JUCE version from the .jucer file's User Notes section (juce:version). If the version is not found, it returns an error.
+func extractJuceVersionFromUserNotes(projDir string) int {
+	jucerFilePath, err := utils.GetJucerFilePath(projDir)
+	if err != nil {
+		return -1
+	}
+
+	jucerFile, err := os.Open(jucerFilePath)
+	if err != nil {
+		return -1
+	}
+	defer jucerFile.Close()
+
+	var raw struct {
+		XMLName   xml.Name `xml:"JUCERPROJECT"`
+		UserNotes string   `xml:"userNotes,attr"`
+	}
+
+	decoder := xml.NewDecoder(jucerFile)
+	if err := decoder.Decode(&raw); err != nil {
+		return -1
+	}
+
+	if raw.UserNotes == "" {
+		return -1
+	}
+
+	scanner := bufio.NewScanner(strings.NewReader(raw.UserNotes))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if rest, found := strings.CutPrefix(line, "juce:"); found {
+			versionStr := strings.TrimSpace(rest)
+			version, err := strconv.Atoi(versionStr)
+			if err != nil {
+				return -1
+			}
+			return version
+		}
+	}
+
+	return -1
+}
+
+func getJucePath(juceVer int) (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("[getJucePath] error finding user home directory: %w", err)
+	}
+
+	versionStr := strconv.Itoa(juceVer)
+	juceDirPath := filepath.Join(homeDir, ".mosac", "juce", versionStr)
+	info, err := os.Stat(juceDirPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("[getJucePath] error occurred while resolving JUCE directory path: version %d not found", juceVer)
+		}
+		return "", fmt.Errorf("[getJucePath] error accessing path %s: %w", juceDirPath, err)
+	}
+
+	if !info.IsDir() {
+		return "", fmt.Errorf("[getJucePath] error: path exists but is not a directory: %s", juceDirPath)
+	}
+
+	absPath, err := filepath.Abs(juceDirPath)
+	if err != nil {
+		return "", fmt.Errorf("[getJucePath] error resolving absolute path: %w", err)
+	}
+
+	return absPath, nil
 }

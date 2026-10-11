@@ -1,7 +1,11 @@
 package utils
 
 import (
+	"bufio"
 	"encoding/xml"
+	"fmt"
+	"strconv"
+	"strings"
 	"unicode"
 )
 
@@ -35,6 +39,7 @@ type RawJucerProject struct {
 	PluginVST3Category     *string `xml:"pluginVST3Category,attr"`
 	PluginAAXCategory      *string `xml:"pluginAAXCategory,attr"`
 	PluginAUMainType       *string `xml:"pluginAUMainType,attr"`
+	UserNotes              *string `xml:"userNotes,attr"`
 
 	PluginCharacteristicsValue *string `xml:"pluginCharacteristicsValue,attr"`
 	IncludeBinaryInJuceHeader  *int    `xml:"includeBinaryInJuceHeader,attr"`
@@ -64,6 +69,10 @@ type PluginProject struct {
 	PluginVST3Category     []string
 	PluginAAXCategory      []string
 	PluginAUMainType       string
+	UserNotes              string
+
+	Owner_json  string // used in pluginName.json metadata report file
+	Rating_json int    // used in pluginName.json metadata report file
 
 	EditorRequiresKeys        string
 	IsMidiEffect              string
@@ -76,7 +85,7 @@ type PluginProject struct {
 	CompanyName      string
 	CompanyEmail     string
 	CompanyWebsite   string
-	CompanyCopyright string
+	CompanyCopyright []string // array because it can contain multiple authors names.
 
 	Defines        []string
 	Modules        []string
@@ -106,4 +115,31 @@ func getPluginCodeFromUID(uid string) string {
 		runes[i] = unicode.ToLower(runes[i])
 	}
 	return string(runes)
+}
+
+// searches "owner:....." and "rating:n" (with 0<n<6) in separate lines in the UserNotes and returns the parsed values
+func parseUserNotes(userNotes string) (owner string, rating int) {
+	owner = "default.owner@email.com"
+	rating = -1
+
+	// use a scanner to read the userNotes line by line
+	scanner := bufio.NewScanner(strings.NewReader(userNotes))
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if rest, found := strings.CutPrefix(line, "owner:"); found {
+			owner = strings.TrimSpace(rest)
+		} else if rest, found := strings.CutPrefix(line, "rating:"); found {
+			ratingStr := strings.TrimSpace(rest)
+			parsedRating, err := strconv.Atoi(ratingStr)
+			if err != nil || parsedRating < 0 || parsedRating > 5 {
+				fmt.Printf("-- non valid <rating> in UserNotes found -> rating = -1.\n\n")
+				rating = -1
+			} else {
+				rating = parsedRating
+			}
+		}
+	}
+
+	return owner, rating
 }

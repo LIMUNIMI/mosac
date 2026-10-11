@@ -9,24 +9,27 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
-	project "mosac/internal/project"
 	utils "mosac/internal/utils"
 )
 
 type PluginMetadata struct {
 	PluginName    string   `json:"pluginName"`
 	PluginVersion string   `json:"pluginVersion"`
-	PluginDesc    string   `json:"pluginDesc"`
+	PluginDesc    string   `json:"pluginDesc"` // description from .jucer file (unique, no more description in mosac.conf)
 	FxCategory    []string `json:"FxCategory"`
 
-	EnglishDesc string   `json:"englishDesc"`
-	Authors     []string `json:"authors"`
-	Email       []string `json:"email"`
-	Url         string   `json:"url"`
+	Authors        []string `json:"authors"` // authors names (from company copyright in .jucer)
+	Owner          string   `json:"owner"`   // from .jucer <notes> section, search for keyword "owner"
+	CompanyEmail   []string `json:"email"`   // ONLY first email in .jucer's companyEmail
+	CompanyWebsite string   `json:"url"`     // .jucer's companyWebsite (default lim plugin site)
 
-	TargetOS        []string `json:"targetOS"`
-	CompiledFormats []string `json:"compiledFormats"`
+	TargetOS              []string `json:"targetOS"`
+	CompiledFormats       []string `json:"compiledFormats"`
+	MacOSDeploymentTarget string   `json:"macOSDeploymentTarget"` // see if implement a new "setting" section or hard code and update manually every time
+	DateUpd               string   `json:"dateupd"`
+	Rating                int      `json:"rating"` // 0-5 stars, default -1 (not rated)
 }
 
 // copies .pdf and .md files from the src directory to the dest directory.
@@ -93,38 +96,39 @@ func removeFiles(toBeRemoved []string) {
 }
 
 // creates a JSON file containing metadata about the current plugin build.
-func writeInfoToJson(proj *utils.PluginProject, config *project.MosacConfig, outputDir string, buildForOS, pluginFormats []string) error {
+func writeInfoToJson(proj *utils.PluginProject, outputDir string, buildForOS, pluginFormats []string) error {
 	file, err := os.Create(filepath.Join(outputDir, fmt.Sprintf("%s.json", proj.PluginName)))
 	if err != nil {
-		return fmt.Errorf("[Output] Error creating JSON file: %w", err)
+		return fmt.Errorf("[writeInfoToJson] error creating JSON file: %w", err)
 	}
 	defer file.Close()
 
-	englishDesc := "insert here english plugin description"
-	authors := []string{"author1", "author2"}
-	email := []string{"email1@example.com", "email2@example.com"}
-	url := ""
+	if proj.Owner_json == "" {
+		proj.Owner_json = "default.owner@email.com"
+	}
 
-	if config != nil {
-		englishDesc = config.EnglishDesc
-		authors = config.Authors
-		email = config.Emails
-		url = config.Url
+	macOSDeploymentTarget := "12.0"
+	if !slices.Contains(buildForOS, "MacOS") {
+		macOSDeploymentTarget = "null"
 	}
 
 	jsonData := PluginMetadata{
-		PluginName:    strings.ReplaceAll(proj.PluginName, "_", " "),
+		PluginName:    proj.PluginName,
 		PluginVersion: proj.Version,
 		PluginDesc:    proj.PluginDesc,
 		FxCategory:    proj.PluginVST3Category,
 
-		EnglishDesc: englishDesc,
-		Authors:     authors,
-		Email:       email,
-		Url:         url,
+		Authors:        proj.CompanyCopyright,
+		CompanyEmail:   strings.Split(proj.CompanyEmail, ","),
+		CompanyWebsite: proj.CompanyWebsite,
 
-		TargetOS:        buildForOS,
-		CompiledFormats: pluginFormats,
+		TargetOS:              buildForOS,
+		MacOSDeploymentTarget: macOSDeploymentTarget,
+		CompiledFormats:       pluginFormats,
+		DateUpd:               time.Now().UTC().Format("2006-01-02"), // symbolic string for Golang to indicate year-month-day
+
+		Owner:  proj.Owner_json,
+		Rating: proj.Rating_json,
 	}
 
 	encoder := json.NewEncoder(file)
@@ -132,14 +136,14 @@ func writeInfoToJson(proj *utils.PluginProject, config *project.MosacConfig, out
 
 	err = encoder.Encode(jsonData)
 	if err != nil {
-		return fmt.Errorf("[Output] Error writing JSON data: %w", err)
+		return fmt.Errorf("[Output] error writing JSON data: %w", err)
 	}
 
 	return nil
 }
 
 // copies all available build output to the outputDir and creates a JSON metadata file.
-func OrganizeOutput(proj *utils.PluginProject, config *project.MosacConfig, projDir, outputDir, buildType string, buildForOS, pluginFormats []string, simpleOutput bool) error {
+func OrganizeOutput(proj *utils.PluginProject, projDir, outputDir, buildType string, buildForOS, pluginFormats []string, simpleOutput bool) error {
 	contentDir := filepath.Join(outputDir, proj.PluginName)
 	var (
 		err         error
@@ -147,7 +151,7 @@ func OrganizeOutput(proj *utils.PluginProject, config *project.MosacConfig, proj
 	)
 
 	if err = os.MkdirAll(contentDir, os.ModePerm); err != nil {
-		return fmt.Errorf("[Output] Error occurred while creating output directory: %w", err)
+		return fmt.Errorf("[Output] error occurred while creating output directory: %w", err)
 	}
 	filteredFormats := make([]string, 0, len(pluginFormats))
 
@@ -205,7 +209,7 @@ func OrganizeOutput(proj *utils.PluginProject, config *project.MosacConfig, proj
 	removeFiles(toBeRemoved)
 	os.RemoveAll(filepath.Join(contentDir, "Windows", buildType, "AAX"))
 
-	if err := writeInfoToJson(proj, config, outputDir, buildForOS, filteredFormats); err != nil {
+	if err := writeInfoToJson(proj, outputDir, buildForOS, filteredFormats); err != nil {
 		return err
 	}
 	if err := copyDocFiles(projDir, contentDir); err != nil {
@@ -229,8 +233,12 @@ func pack_Compiled_Json_Source(projectPath, outputPath, pluginName string) error
 	jsonSrc := filepath.Join(outputPath, pluginName+".json")
 	jsonDest := filepath.Join(packDir, pluginName+".json")
 
-	if err := os.MkdirAll(packDir, 0755); err != nil {
-		return fmt.Errorf("error while creating directory %s: %w", packDir, err)
+	if err := os.RemoveAll(packDir); err != nil {
+		return fmt.Errorf("error while cleaning previous pack directory: %w", err)
+	}
+
+	if err := os.MkdirAll(sourceDestDir, 0755); err != nil {
+		return fmt.Errorf("error while creating directory %s: %w", sourceDestDir, err)
 	}
 
 	if err := os.Rename(compiledSrc, compiledDest); err != nil && !os.IsNotExist(err) {
@@ -244,9 +252,9 @@ func pack_Compiled_Json_Source(projectPath, outputPath, pluginName string) error
 		"JuceLibraryCode": true,
 		"build":           true,
 		"Builds":          true,
-		".git":						 true,
-	  ".github":				 true,
-		".vscode":				 true,
+		".git":            true,
+		".github":         true,
+		".vscode":         true,
 	}
 	excludedFiles := map[string]bool{
 		"CMakeLists.txt": true,
@@ -286,7 +294,7 @@ func pack_Compiled_Json_Source(projectPath, outputPath, pluginName string) error
 	})
 
 	if err != nil {
-		return fmt.Errorf("errore critico durante il trasferimento del codice sorgente: %w", err)
+		return fmt.Errorf("error while moving directories and files: %w", err)
 	}
 
 	return nil

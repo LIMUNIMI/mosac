@@ -67,7 +67,7 @@ func createBatchCSVFile(args []string) int {
 	outPtr := batchCmd.String("out", "", "output directory for batch.csv file")
 	buildTypePtr := batchCmd.String("c", "Release", "build configuration (Debug or Release)")
 	sysPtr := batchCmd.String("sys", "MacOS,Linux,Windows", "comma-separated target system")
-	formatsPtr := batchCmd.String("formats", "Standalone,VST3,AU,LV2,Unity,AAX", "comma-separated build formats")
+	formatsPtr := batchCmd.String("formats", "Standalone,VST3,AU,LV2,Unity", "comma-separated build formats")
 
 	if err := batchCmd.Parse(args); err != nil {
 		return 1
@@ -91,7 +91,7 @@ func createBatchCSVFile(args []string) int {
 		return 1
 	}
 
-	if !IsFlagValid(formatsPtr, []string{"Standalone", "VST3", "AU", "LV2", "Unity", "AAX"}) {
+	if !IsFlagValid(formatsPtr, []string{"Standalone", "VST3", "AU", "LV2", "Unity"}) {
 		fmt.Println("Error: Invalid formats flag. Must be a comma-separated list of 'Standalone', 'VST3', 'AU', 'LV2', 'Unity', 'AAX'.")
 		batchCmd.Usage()
 		return 1
@@ -145,14 +145,14 @@ func runBuildCmd(args []string) int {
 	batchFilePtr := buildCmd.String("b", "", "path to a batch.csv file")
 
 	ppPtr := buildCmd.String("PP", "", "single project path")
-	jpPtr := buildCmd.String("JP", "", "JUCE path")
+	jpPtr := buildCmd.Int("JV", -1, "JUCE version") // -1 indicates that the version is not specified.
 	opPtr := buildCmd.String("OP", "", "output path for the build(s)")
 
 	simpleOutPtr := buildCmd.Bool("simple-out", false, "if specified, only the compiled plugin folder + its json will be copied to the output path. otherwise, the build folder, the json report file and the plugin source folder will be copied to the output path in a 'pluginName' folder containing everything.")
 
 	buildTypePtr := buildCmd.String("c", "Release", "build configuration (Debug or Release)")
 	sysPtr := buildCmd.String("sys", "MacOS,Linux,Windows", "comma-separated target system")
-	formatsPtr := buildCmd.String("formats", "Standalone,VST3,AU,LV2,Unity,AAX", "comma-separated build formats")
+	formatsPtr := buildCmd.String("formats", "Standalone,VST3,AU,LV2,Unity", "comma-separated build formats")
 	newPtr := buildCmd.Bool("new", false, "perform a clean build (removes build/ and Builds/ folders)")
 
 	if err := buildCmd.Parse(args); err != nil {
@@ -184,8 +184,8 @@ func runBuildCmd(args []string) int {
 			return 1
 		}
 
-		if *ppPtr != "" || *jpPtr != "" {
-			fmt.Println("Error: Cannot specify both batch file (-b) and single project flags (-PP, -JP).")
+		if *ppPtr != "" || *jpPtr < 1 {
+			fmt.Println("Error: Cannot specify both batch file (-b) and single project flags (-PP, -JV).")
 			buildCmd.Usage()
 			return 1
 		}

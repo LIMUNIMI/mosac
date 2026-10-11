@@ -21,6 +21,9 @@ func PrepareProject(projectPath, jucePath string, pluginFormats []string, skipAA
 		return nil, fmt.Errorf("[PrepareProject] error occurred while resolving .jucer project file: %w", err)
 	}
 
+	if err := disableJucerPluginCopyStep(jucerFilePath); err != nil {
+		return nil, fmt.Errorf("[PrepareProject] error disabling copy step: %w", err)
+	}
 	if err := updateJucerFallbackMetadata(jucerFilePath); err != nil {
 		return nil, fmt.Errorf("[PrepareProject] error occurred while normalizing .jucer metadata: %w", err)
 	}
@@ -581,4 +584,27 @@ func GetJucerFilePath(ProjectPath string) (string, error) {
 	}
 
 	return absPath, nil
+}
+
+// disable the automatic post build step that copies the plugin in the host machine
+func disableJucerPluginCopyStep(jucerFilePath string) error {
+	jucerContent, err := os.ReadFile(jucerFilePath)
+	if err != nil {
+		return fmt.Errorf("[disableJucerPluginCopyStep] error reading .jucer project file: %w", err)
+	}
+
+	strContent := string(jucerContent)
+	reAttr := regexp.MustCompile(`\s*enablePluginBinaryCopyStep="[01]"`)
+	strContent = reAttr.ReplaceAllString(strContent, "")
+	strContent = strings.ReplaceAll(strContent, "<CONFIGURATION ", `<CONFIGURATION enablePluginBinaryCopyStep="0" `)
+
+	if strContent == string(jucerContent) {
+		return nil
+	}
+
+	if err := os.WriteFile(jucerFilePath, []byte(strContent), 0o644); err != nil {
+		return fmt.Errorf("[disableJucerPluginCopyStep] error writing .jucer project file: %w", err)
+	}
+
+	return nil
 }

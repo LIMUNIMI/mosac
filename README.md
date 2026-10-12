@@ -81,7 +81,7 @@ Install a specific release:
 ./mosac update -v 8.0.14
 ```
 
-MOSAC uses the major-version directories (example) `~/.mosac/juce/7` and `~/.mosac/juce/8` when a project or batch file refers to `JUCE7` or `JUCE8`.
+MOSAC uses the major-version directories (example) `~/.mosac/juce/7` and `~/.mosac/juce/8` when a project or batch file refers to `juce:7` or `juce:8`.
 
 ## Diagnostics: `health`
 
@@ -110,7 +110,7 @@ Options:
 | Option | Description | Default |
 | --- | --- | --- |
 | `-dir` | Directory containing project directories | required |
-| `-juce` | Default JUCE version | required |
+| `-juce` | Default JUCE major version | required |
 | `-out` | Directory where `batch.csv` is written | required |
 | `-c` | `Debug` or `Release` | `Release` |
 | `-sys` | Comma-separated target systems | `MacOS,Linux,Windows` |
